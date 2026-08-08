@@ -10,8 +10,11 @@ import {
   PORT,
   PROJECT_NAME,
 } from './constants.js';
+
 import notFoundHandler from './middlewares/notFound.middleware.js';
 import errorHandler from './middlewares/error.middleware.js';
+
+import userRoutes from './modules/users/user.route.js';
 
 dotenv.config();
 
@@ -21,8 +24,12 @@ app.use(helmet());
 app.use(cors(CORS_OPTIONS));
 app.use(express.json());
 
-/* ========== Health Check ========== */
+const baseApiPath = '/api/v1';
 
+/* ========== Routes ========== */
+app.use(`${baseApiPath}/users`, userRoutes);
+
+/* ========== Health Check ========== */
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
