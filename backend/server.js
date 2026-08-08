@@ -19,6 +19,7 @@ import categoryRoutes from './modules/categories/category.route.js';
 import accountRoutes from './modules/accounts/account.route.js';
 import transactionRoutes from './modules/transactions/transaction.route.js';
 import productRoutes from './modules/products/product.route.js';
+import salesRoutes from './modules/sales/sale.route.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use(`${baseApiPath}/categories`, categoryRoutes);
 app.use(`${baseApiPath}/accounts`, accountRoutes);
 app.use(`${baseApiPath}/transactions`, transactionRoutes);
 app.use(`${baseApiPath}/products`, productRoutes);
+app.use(`${baseApiPath}/sales`, salesRoutes);
 
 /* ========== Health Check ========== */
 app.get(`${baseApiPath}/health`, (req, res) => {
