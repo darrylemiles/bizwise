@@ -79,7 +79,7 @@ const getFinancialSummary = async (
     await Transaction.aggregate([
       {
         $match: {
-          transactionDate: {
+          date: {
             $gte: startDate,
             $lte: endDate,
           },
@@ -467,11 +467,11 @@ const getRecentTransactions =
         'name type'
       )
       .sort({
-        transactionDate: -1,
+        date: -1,
       })
       .limit(5)
       .select(
-        'type amount description transactionDate account'
+        'type amount description date account'
       )
       .lean();
   };
