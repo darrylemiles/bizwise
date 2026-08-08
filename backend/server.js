@@ -10,7 +10,8 @@ import {
   PORT,
   PROJECT_NAME,
 } from './constants.js';
-
+import notFoundHandler from './middlewares/notFound.middleware.js';
+import errorHandler from './middlewares/error.middleware.js';
 
 dotenv.config();
 
@@ -28,6 +29,9 @@ app.get('/api/v1/health', (req, res) => {
     project: PROJECT_NAME,
   });
 });
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 /* ========== Start Server ========== */
 
