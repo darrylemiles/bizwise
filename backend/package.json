@@ -26,10 +26,13 @@
     "server": "nodemon server.js"
   },
   "dependencies": {
+    "colors": "^1.4.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "install": "^0.13.0",
     "mongoose": "^9.9.1",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "npm": "^11.19.0"
   }
 }
