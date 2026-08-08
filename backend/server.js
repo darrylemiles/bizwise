@@ -41,7 +41,7 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(
-        `${PROJECT_NAME} API is running on port ${PORT}`.bgBlue
+        `${PROJECT_NAME} API is running on port ${PORT}`.green.bold
       );
     });
   } catch (error) {
