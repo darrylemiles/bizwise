@@ -1,21 +1,39 @@
-const validate = (schema) => {
+const validate = (
+  schema,
+  source = 'body'
+) => {
   return (req, res, next) => {
-    const result = schema.safeParse(req.body);
+    const result = schema.safeParse(
+      req[source]
+    );
 
     if (!result.success) {
-      const errors = result.error.issues.map((issue) => ({
-        field: issue.path.join('.'),
-        message: issue.message,
-      }));
+      const error = new Error(
+        'Validation failed'
+      );
 
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors,
-      });
+      error.statusCode = 400;
+
+      error.errors =
+        result.error.issues.map(
+          (issue) => ({
+            field:
+              issue.path.length > 0
+                ? issue.path.join('.')
+                : '',
+            message: issue.message,
+          })
+        );
+
+      return next(error);
     }
 
-    req.body = result.data;
+    // Store validated data without
+    // mutating Express request properties.
+    req.validated = req.validated || {};
+
+    req.validated[source] =
+      result.data;
 
     next();
   };

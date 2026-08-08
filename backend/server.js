@@ -22,6 +22,7 @@ import productRoutes from './modules/products/product.route.js';
 import salesRoutes from './modules/sales/sale.route.js';
 import financialGoalRoutes from './modules/financial-goals/financial-goal.route.js';
 import dashboardRoutes from './modules/dashboard/dashboard.route.js';
+import reportRoutes from './modules/reports/report.route.js';
 
 dotenv.config();
 
@@ -42,6 +43,8 @@ app.use(`${baseApiPath}/products`, productRoutes);
 app.use(`${baseApiPath}/sales`, salesRoutes);
 app.use(`${baseApiPath}/financial-goals`, financialGoalRoutes);
 app.use(`${baseApiPath}/dashboard`, dashboardRoutes);
+app.use(`${baseApiPath}/reports`, reportRoutes);
+
 
 /* ========== Health Check ========== */
 app.get(`${baseApiPath}/health`, (req, res) => {
