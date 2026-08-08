@@ -16,6 +16,7 @@ import errorHandler from './middlewares/error.middleware.js';
 
 import userRoutes from './modules/users/user.route.js';
 import categoryRoutes from './modules/categories/category.route.js';
+import accountRoutes from './modules/accounts/account.route.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ const baseApiPath = '/api/v1';
 /* ========== Routes ========== */
 app.use(`${baseApiPath}/users`, userRoutes);
 app.use(`${baseApiPath}/categories`, categoryRoutes);
+app.use('/api/v1/accounts', accountRoutes);
 
 /* ========== Health Check ========== */
 app.get('/api/v1/health', (req, res) => {
