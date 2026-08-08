@@ -26,6 +26,7 @@
     "server": "nodemon server.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "colors": "^1.4.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
