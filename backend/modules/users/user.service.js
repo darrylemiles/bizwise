@@ -83,6 +83,24 @@ const getUsers = async (query) => {
   };
 };
 
+const getMe = async (userId) => {
+  const user = await User.findById(userId)
+
+  if (!user) {
+    const error = new Error("User not found")
+    error.statusCode = 404
+
+    throw error
+  }
+
+  return {
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    role: user.role,
+  }
+}
+
 const getUserById = async (id) => {
   const user = await User.findById(id);
 
@@ -170,4 +188,5 @@ export default {
   updateUser,
   updateUserRole,
   deleteUser,
+  getMe
 };

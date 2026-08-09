@@ -8,6 +8,7 @@ import {
   updateUserRole,
   deleteUser,
   loginUser,
+  getMe,
 } from './user.controller.js';
 
 import validate from '../../middlewares/validate.middleware.js';
@@ -33,6 +34,8 @@ router.post(
   validate(loginUserSchema),
   loginUser
 );
+
+router.get("/me", protect, getMe)
 
 router.post(
   '/',

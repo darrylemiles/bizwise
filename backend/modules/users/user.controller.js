@@ -2,22 +2,49 @@ import userService from './user.service.js';
 
 const loginUser = async (req, res, next) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body
 
     const result = await userService.loginUser(
       username,
-      password
-    );
+      password,
+    )
+
+    res.cookie("access_token", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    })
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
-      data: result,
-    });
+      message: "Login successful",
+      data: {
+        user: result.user,
+      },
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
+
+const getMe = async (req, res, next) => {
+  try {
+    const user = await userService.getMe(
+      req.user._id,
+    )
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 
 const createUser = async (req, res, next) => {
   try {
@@ -116,4 +143,5 @@ export {
   updateUser,
   updateUserRole,
   deleteUser,
+  getMe,
 };
