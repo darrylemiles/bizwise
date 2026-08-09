@@ -3,55 +3,34 @@ import User from '../modules/users/user.model.js';
 
 const protect = async (req, res, next) => {
   try {
-    let token;
-
-    const authorization = req.headers.authorization;
-
-    if (
-      authorization &&
-      authorization.startsWith('Bearer ')
-    ) {
-      token = authorization.split(' ')[1];
-    }
+    const token = req.cookies.access_token
 
     if (!token) {
-      const error = new Error('Authentication required');
-      error.statusCode = 401;
-
-      return next(error);
+      const error = new Error("Not authenticated")
+      error.statusCode = 401
+      throw error
     }
 
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET
-    );
+      process.env.JWT_SECRET,
+    )
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id)
 
     if (!user) {
-      const error = new Error('User no longer exists');
-      error.statusCode = 401;
-
-      return next(error);
+      const error = new Error("User not found")
+      error.statusCode = 401
+      throw error
     }
 
-    req.user = user;
+    req.user = user
 
-    next();
+    next()
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      error.statusCode = 401;
-      error.message = 'Invalid authentication token';
-    }
-
-    if (error.name === 'TokenExpiredError') {
-      error.statusCode = 401;
-      error.message = 'Authentication token has expired';
-    }
-
-    next(error);
+    next(error)
   }
-};
+}
 
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
