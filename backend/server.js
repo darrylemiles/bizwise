@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from "cookie-parser"
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -31,6 +32,7 @@ const app = express();
 app.use(helmet());
 app.use(cors(CORS_OPTIONS));
 app.use(express.json());
+app.use(cookieParser())
 
 const baseApiPath = '/api/v1';
 
