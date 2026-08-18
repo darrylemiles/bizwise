@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -31,6 +32,7 @@ import {
 
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { menuGroups, menuItems } from "@/components/layout/menu-items"
+import { APP_NAME_CONFIGS } from "@/constants"
 
 export default function AppSidebar() {
 	const pathname = usePathname()
@@ -68,11 +70,11 @@ export default function AppSidebar() {
 
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-semibold">
-										Bizwise
+										{APP_NAME_CONFIGS.NAME}
 									</span>
 
 									<span className="truncate text-xs text-muted-foreground">
-										Business Management
+										{APP_NAME_CONFIGS.SHORT_DESCRIPTION}
 									</span>
 								</div>
 							</Link>
@@ -151,21 +153,23 @@ export default function AppSidebar() {
 								align="start"
 								className="w-56"
 							>
-								<DropdownMenuLabel>
-									My Account
-								</DropdownMenuLabel>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>
+										My Account
+									</DropdownMenuLabel>
 
-								<DropdownMenuSeparator />
+									<DropdownMenuSeparator />
 
-								<DropdownMenuItem>
-									<Link
-										href="/portal/settings"
-										className="flex w-full items-center"
-									>
-										<Settings className="mr-2 size-4" />
-										Settings
-									</Link>
-								</DropdownMenuItem>
+									<DropdownMenuItem>
+										<Link
+											href="/portal/settings"
+											className="flex w-full items-center"
+										>
+											<Settings className="mr-2 size-4" />
+											Settings
+										</Link>
+									</DropdownMenuItem>
+								</DropdownMenuGroup>
 
 								<DropdownMenuSeparator />
 
