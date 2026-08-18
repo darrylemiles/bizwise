@@ -21,14 +21,18 @@ export function AuthGuard({
 		if (!isLoading && !isAuthenticated) {
 			router.replace("/")
 		}
-	}, [isLoading, isAuthenticated, router])
+	}, [
+		isLoading,
+		isAuthenticated,
+		router,
+	])
 
 	if (isLoading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-sm text-muted-foreground">
+				<p className="text-sm text-muted-foreground">
 					Loading...
-				</div>
+				</p>
 			</div>
 		)
 	}

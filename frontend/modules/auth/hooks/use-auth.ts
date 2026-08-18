@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+
 import { getCurrentUser } from "../auth.api"
 
 export function useAuth() {
@@ -12,9 +13,9 @@ export function useAuth() {
 	})
 
 	return {
-		user: query.data?.user ?? null,
+		user: query.data?.data.user ?? null,
 		isLoading: query.isLoading,
-		isAuthenticated: !!query.data?.user,
+		isAuthenticated: !!query.data?.data.user,
 		isError: query.isError,
 	}
 }

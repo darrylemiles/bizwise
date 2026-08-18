@@ -1,11 +1,24 @@
 "use client"
 
-import { useMutation } from "@tanstack/react-query"
-import type { LoginFormValues } from "../schemas/auth.schema"
+import {
+	useMutation,
+	useQueryClient,
+} from "@tanstack/react-query"
+
 import { login } from "../auth.api"
+import type { LoginInput } from "../auth.types"
 
 export function useLogin() {
-  return useMutation({
-    mutationFn: (data: LoginFormValues) => login(data),
-  })
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: (data: LoginInput) => login(data),
+
+		onSuccess: (response) => {
+			queryClient.setQueryData(
+				["auth", "me"],
+				response,
+			)
+		},
+	})
 }
