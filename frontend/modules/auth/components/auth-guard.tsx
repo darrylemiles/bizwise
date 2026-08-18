@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
+import PortalLoading from "@/app/portal/loading"
 import { useAuth } from "../hooks/use-auth"
 
 export function AuthGuard({
@@ -28,13 +29,7 @@ export function AuthGuard({
 	])
 
 	if (isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<p className="text-sm text-muted-foreground">
-					Loading...
-				</p>
-			</div>
-		)
+		return <PortalLoading />
 	}
 
 	if (!isAuthenticated) {
