@@ -2,7 +2,11 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Building2, ChevronUp, Settings } from "lucide-react"
+import {
+	Building2,
+	ChevronUp,
+	Settings,
+} from "lucide-react"
 
 import {
 	Sidebar,
@@ -31,7 +35,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { useAuth } from "@/modules/auth/hooks/use-auth"
-import { menuGroups, menuItems } from "@/components/layout/menu-items"
+import {
+	menuGroups,
+	menuItems,
+} from "@/components/layout/menu-items"
+
 import { APP_NAME_CONFIGS } from "@/constants"
 
 export default function AppSidebar() {
@@ -51,19 +59,22 @@ export default function AppSidebar() {
 	})
 
 	return (
-		<Sidebar collapsible="icon" variant="inset">
+		<Sidebar
+			collapsible="icon"
+			variant="inset"
+		>
 			{/* Brand */}
 			<SidebarHeader className="border-b">
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
+							render={
+								<Link href="/portal/dashboard" />
+							}
 							size="lg"
-							tooltip="Bizwise"
+							tooltip={APP_NAME_CONFIGS.NAME}
 						>
-							<Link
-								href="/portal/dashboard"
-								className="flex w-full items-center gap-2"
-							>
+							<div className="flex items-center gap-2">
 								<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
 									<Building2 className="size-4" />
 								</div>
@@ -77,7 +88,7 @@ export default function AppSidebar() {
 										{APP_NAME_CONFIGS.SHORT_DESCRIPTION}
 									</span>
 								</div>
-							</Link>
+							</div>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
@@ -160,14 +171,13 @@ export default function AppSidebar() {
 
 									<DropdownMenuSeparator />
 
-									<DropdownMenuItem>
-										<Link
-											href="/portal/settings"
-											className="flex w-full items-center"
-										>
-											<Settings className="mr-2 size-4" />
-											Settings
-										</Link>
+									<DropdownMenuItem
+										render={
+											<Link href="/portal/settings" />
+										}
+									>
+										<Settings className="size-4" />
+										<span>Settings</span>
 									</DropdownMenuItem>
 								</DropdownMenuGroup>
 
@@ -182,6 +192,7 @@ export default function AppSidebar() {
 				</SidebarMenu>
 			</SidebarFooter>
 
+			{/* Desktop collapse rail */}
 			<SidebarRail />
 		</Sidebar>
 	)
@@ -203,16 +214,12 @@ function NavigationItem({
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
+				render={<Link href={item.url} />}
 				isActive={isActive}
 				tooltip={item.title}
 			>
-				<Link
-					href={item.url}
-					className="flex w-full items-center gap-2"
-				>
-					<Icon />
-					<span>{item.title}</span>
-				</Link>
+				<Icon />
+				<span>{item.title}</span>
 			</SidebarMenuButton>
 		</SidebarMenuItem>
 	)
@@ -225,6 +232,7 @@ function getInitials(name?: string) {
 
 	return name
 		.split(" ")
+		.filter(Boolean)
 		.map((part) => part[0])
 		.join("")
 		.slice(0, 2)
