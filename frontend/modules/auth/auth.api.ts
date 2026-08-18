@@ -24,3 +24,11 @@ export async function getCurrentUser(): Promise<MeResponse> {
 
 	return data
 }
+
+export async function logout(): Promise<{ success: boolean; message: string }> {
+	const { data } = await api.post<{ success: boolean; message: string }>(
+		"/users/logout",
+	)
+
+	return data
+}

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
 import {
 	Building2,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { useAuth } from "@/modules/auth/hooks/use-auth"
+import { useLogout } from "@/modules/auth/hooks/use-logout"
 import {
 	menuGroups,
 	menuItems,
@@ -44,12 +46,23 @@ import { APP_NAME_CONFIGS } from "@/constants"
 
 export default function AppSidebar() {
 	const pathname = usePathname()
+	const router = useRouter()
 	const { user, isAdmin } = useAuth()
+	const logoutMutation = useLogout()
 
 	const isAccessible = (item: (typeof menuItems)[number]) => {
 		if (item.access === "all") return true
 		if (item.access === "admin") return isAdmin
 		return false
+	}
+
+	const handleSignOut = () => {
+		logoutMutation.mutate(undefined, {
+			onSuccess: () => {
+				router.replace("/login")
+				router.refresh()
+			},
+		})
 	}
 
 	return (
@@ -175,7 +188,7 @@ export default function AppSidebar() {
 
 								<DropdownMenuSeparator />
 
-								<DropdownMenuItem>
+								<DropdownMenuItem onClick={handleSignOut}>
 									Sign out
 								</DropdownMenuItem>
 							</DropdownMenuContent>
