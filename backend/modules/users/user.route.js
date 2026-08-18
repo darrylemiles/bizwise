@@ -8,6 +8,7 @@ import {
   updateUserRole,
   deleteUser,
   loginUser,
+  logoutUser,
   getMe,
 } from './user.controller.js';
 
@@ -34,6 +35,8 @@ router.post(
   validate(loginUserSchema),
   loginUser
 );
+
+router.post('/logout', logoutUser)
 
 router.get("/me", protect, getMe)
 

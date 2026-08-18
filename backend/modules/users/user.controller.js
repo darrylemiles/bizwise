@@ -29,6 +29,20 @@ const loginUser = async (req, res, next) => {
   }
 }
 
+const logoutUser = async (req, res) => {
+  res.clearCookie("access_token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  })
+
+  res.status(200).json({
+    success: true,
+    message: "Logout successful",
+  })
+}
+
 const getMe = async (req, res, next) => {
   try {
     const user = await userService.getMe(
@@ -137,6 +151,7 @@ const deleteUser = async (req, res, next) => {
 
 export {
   loginUser,
+  logoutUser,
   createUser,
   getUsers,
   getUserById,
