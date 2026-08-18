@@ -1,69 +1,83 @@
-import {
-	ArrowLeftRight,
-	BarChart3,
-	Building2,
-	LayoutDashboard,
-	Package,
-	ShoppingCart,
-	Users,
-} from "lucide-react"
+import { ArrowLeftRight, BarChart3, LayoutDashboard, Package, ShoppingCart, Users } from "lucide-react"
 
 export type MenuAccess = "all" | "admin"
 
-export type MenuGroup =
-	| "Overview"
-	| "Business"
-	| "Analytics"
-	| "Administration"
+export type MenuGroupName = "Overview" | "Business" | "Analytics" | "Administration"
 
-export const menuItems = [
-	{
-		icon: LayoutDashboard,
-		access: "all",
-		title: "Dashboard",
-		group: "Overview",
-		url: "/portal/dashboard",
-	},
-	{
-		icon: Package,
-		access: "all",
-		title: "Products",
-		group: "Business",
-		url: "/portal/products",
-	},
-	{
-		icon: ShoppingCart,
-		access: "all",
-		title: "Sales",
-		group: "Business",
-		url: "/portal/sales",
-	},
-	{
-		icon: ArrowLeftRight,
-		access: "all",
-		title: "Transactions",
-		group: "Business",
-		url: "/portal/transactions",
-	},
-	{
-		icon: BarChart3,
-		access: "all",
-		title: "Reports",
-		group: "Analytics",
-		url: "/portal/reports",
-	},
-	{
-		icon: Users,
-		access: "admin",
-		title: "Users",
-		group: "Administration",
-		url: "/portal/users",
-	},
-] as const
+type IconType = any
+
+export type MenuItem = {
+	icon: IconType
+	access: MenuAccess
+	title: string
+	url: string
+}
+
+export type MenuGroup = {
+	title: MenuGroupName
+	items: MenuItem[]
+}
 
 export const menuGroups: MenuGroup[] = [
-	"Overview",
-	"Business",
-	"Analytics",
-	"Administration",
+	{
+		title: "Overview",
+		items: [
+			{
+				icon: LayoutDashboard,
+				access: "all",
+				title: "Dashboard",
+				url: "/portal/dashboard",
+			},
+		],
+	},
+
+	{
+		title: "Business",
+		items: [
+			{
+				icon: Package,
+				access: "all",
+				title: "Products",
+				url: "/portal/products",
+			},
+			{
+				icon: ShoppingCart,
+				access: "all",
+				title: "Sales",
+				url: "/portal/sales",
+			},
+			{
+				icon: ArrowLeftRight,
+				access: "all",
+				title: "Transactions",
+				url: "/portal/transactions",
+			},
+		],
+	},
+
+	{
+		title: "Analytics",
+		items: [
+			{
+				icon: BarChart3,
+				access: "all",
+				title: "Reports",
+				url: "/portal/reports",
+			},
+		],
+	},
+
+	{
+		title: "Administration",
+		items: [
+			{
+				icon: Users,
+				access: "admin",
+				title: "Users",
+				url: "/portal/users",
+			},
+		],
+	},
 ]
+
+export const menuItems = menuGroups.flatMap((group) => group.items)

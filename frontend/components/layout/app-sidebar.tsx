@@ -46,17 +46,11 @@ export default function AppSidebar() {
 	const pathname = usePathname()
 	const { user, isAdmin } = useAuth()
 
-	const accessibleMenuItems = menuItems.filter((item) => {
-		if (item.access === "all") {
-			return true
-		}
-
-		if (item.access === "admin") {
-			return isAdmin
-		}
-
+	const isAccessible = (item: (typeof menuItems)[number]) => {
+		if (item.access === "all") return true
+		if (item.access === "admin") return isAdmin
 		return false
-	})
+	}
 
 	return (
 		<Sidebar
@@ -97,18 +91,16 @@ export default function AppSidebar() {
 			{/* Navigation */}
 			<SidebarContent>
 				{menuGroups.map((group) => {
-					const items = accessibleMenuItems.filter(
-						(item) => item.group === group
-					)
+					const items = group.items.filter(isAccessible)
 
 					if (items.length === 0) {
 						return null
 					}
 
 					return (
-						<SidebarGroup key={group}>
+						<SidebarGroup key={group.title}>
 							<SidebarGroupLabel>
-								{group}
+								{group.title}
 							</SidebarGroupLabel>
 
 							<SidebarGroupContent>
