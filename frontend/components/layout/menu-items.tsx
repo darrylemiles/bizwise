@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BarChart3, LayoutDashboard, Package, ShoppingCart, Users } from "lucide-react"
+import { ArrowLeftRight, BarChart3, Building2, Layers3, LayoutDashboard, Package, PiggyBank, Settings, ShoppingCart, Users } from "lucide-react"
 
 export type MenuAccess = "all" | "admin"
 
@@ -35,6 +35,18 @@ export const menuGroups: MenuGroup[] = [
 		title: "Business",
 		items: [
 			{
+				icon: Building2,
+				access: "all",
+				title: "Accounts",
+				url: "/portal/accounts",
+			},
+			{
+				icon: Layers3,
+				access: "all",
+				title: "Categories",
+				url: "/portal/categories",
+			},
+			{
 				icon: Package,
 				access: "all",
 				title: "Products",
@@ -59,6 +71,12 @@ export const menuGroups: MenuGroup[] = [
 		title: "Analytics",
 		items: [
 			{
+				icon: PiggyBank,
+				access: "all",
+				title: "Financial Goals",
+				url: "/portal/financial-goals",
+			},
+			{
 				icon: BarChart3,
 				access: "all",
 				title: "Reports",
@@ -75,6 +93,12 @@ export const menuGroups: MenuGroup[] = [
 				access: "admin",
 				title: "Users",
 				url: "/portal/users",
+			},
+			{
+				icon: Settings,
+				access: "all",
+				title: "Settings",
+				url: "/portal/settings",
 			},
 		],
 	},

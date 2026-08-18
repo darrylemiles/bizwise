@@ -1,5 +1,158 @@
-export default function Dashboard() {
+"use client"
+
+import { useState } from "react"
+import type { ComponentType } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowDownLeft, ArrowUpRight, Banknote, Boxes, ChartColumn, CircleDollarSign, Package, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react"
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { DataTable } from "@/components/data-table"
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { getDashboard } from "@/modules/dashboard/dashboard.api"
+
+export default function DashboardPage() {
+  const [from, setFrom] = useState("")
+  const [to, setTo] = useState("")
+
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboard", { from, to }],
+    queryFn: () => getDashboard({ from: from || undefined, to: to || undefined }),
+  })
+
+  const dashboard = dashboardQuery.data?.data
+
   return (
-    <div>Dashboard</div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">Financial snapshot</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+        </div>
+
+        <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">From</label>
+            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">To</label>
+            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+          </div>
+          <Button variant="outline" onClick={() => dashboardQuery.refetch()}>Refresh</Button>
+        </div>
+      </div>
+
+      {dashboardQuery.isError ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-destructive">Unable to load dashboard data.</CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Revenue" value={formatCurrency(dashboard?.summary.income)} description={`${formatNumber(dashboard?.summary.incomeTransactions)} income transactions`} icon={ArrowDownLeft} />
+        <MetricCard title="Expenses" value={formatCurrency(dashboard?.summary.expenses)} description={`${formatNumber(dashboard?.summary.expenseTransactions)} expense transactions`} icon={ArrowUpRight} />
+        <MetricCard title="Net Profit" value={formatCurrency(dashboard?.summary.netProfit)} description="Income minus expenses" icon={CircleDollarSign} />
+        <MetricCard title="Total Balance" value={formatCurrency(dashboard?.accounts.totalBalance)} description={`${formatNumber(dashboard?.accounts.totalAccounts)} accounts`} icon={Banknote} />
+        <MetricCard title="Sales Revenue" value={formatCurrency(dashboard?.sales.revenue)} description={`${formatNumber(dashboard?.sales.totalSales)} sales`} icon={ShoppingCart} />
+        <MetricCard title="Inventory Value" value={formatCurrency(dashboard?.inventory.inventoryValue)} description={`${formatNumber(dashboard?.inventory.totalProducts)} products`} icon={Boxes} />
+        <MetricCard title="Low Stock" value={formatNumber(dashboard?.inventory.lowStock)} description="Products near threshold" icon={TrendingDown} />
+        <MetricCard title="Financial Goals" value={formatNumber((dashboard?.financialGoals.active ?? 0) + (dashboard?.financialGoals.completed ?? 0) + (dashboard?.financialGoals.cancelled ?? 0))} description={`${formatNumber(dashboard?.financialGoals.completed)} completed`} icon={TrendingUp} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Products</CardTitle>
+            <CardDescription>Highest revenue contributors in the selected period</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={dashboard?.topProducts ?? []}
+              emptyMessage="No sales yet"
+              columns={[
+                { head: "Product", render: (item) => `${item.product.name} (${item.product.sku})` },
+                { head: "Qty", render: (item) => formatNumber(item.quantitySold) },
+                { head: "Revenue", render: (item) => formatCurrency(item.revenue) },
+              ]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Low Stock Products</CardTitle>
+            <CardDescription>Products that need replenishment soon</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={dashboard?.lowStockProducts ?? []}
+              emptyMessage="No low stock items"
+              columns={[
+                { head: "Product", render: (item) => `${item.name} (${item.sku})` },
+                { head: "Remaining", render: (item) => formatNumber(item.quantity) },
+                { head: "Threshold", render: (item) => formatNumber(item.lowStockThreshold) },
+              ]}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Transactions</CardTitle>
+            <CardDescription>Latest ledger activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={dashboard?.recentTransactions ?? []}
+              emptyMessage="No transactions yet"
+              columns={[
+                { head: "Type", render: (item) => item.type },
+                { head: "Amount", render: (item) => formatCurrency(item.amount) },
+                { head: "Account", render: (item) => item.account.name },
+                { head: "Date", render: (item) => formatDate(item.date) },
+              ]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Sales</CardTitle>
+            <CardDescription>Latest completed sales</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={dashboard?.recentSales ?? []}
+              emptyMessage="No sales yet"
+              columns={[
+                { head: "Account", render: (item) => item.account.name },
+                { head: "Amount", render: (item) => formatCurrency(item.totalAmount) },
+                { head: "Profit", render: (item) => formatCurrency(item.totalProfit) },
+                { head: "Date", render: (item) => formatDate(item.saleDate) },
+              ]}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function MetricCard({ title, value, description, icon: Icon }: { title: string; value: string; description: string; icon: ComponentType<{ className?: string }> }) {
+  return (
+    <Card>
+      <CardContent className="flex items-start justify-between p-6">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="text-2xl font-semibold tracking-tight">{value}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        <Icon className="size-5 text-muted-foreground" />
+      </CardContent>
+    </Card>
   )
 }
