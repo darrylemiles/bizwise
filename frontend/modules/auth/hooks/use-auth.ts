@@ -17,5 +17,6 @@ export function useAuth() {
 		isLoading: query.isLoading,
 		isAuthenticated: !!query.data?.data.user,
 		isError: query.isError,
+		isAdmin: query.data?.data.user?.role === "admin",
 	}
 }

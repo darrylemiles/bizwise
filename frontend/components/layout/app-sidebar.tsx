@@ -2,17 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-	ArrowLeftRight,
-	BarChart3,
-	Building2,
-	ChevronUp,
-	LayoutDashboard,
-	Package,
-	Settings,
-	ShoppingCart,
-	Users,
-} from "lucide-react"
+import { Building2, ChevronUp, Settings } from "lucide-react"
 
 import {
 	Sidebar,
@@ -40,54 +30,23 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { useAuth } from "@/modules/auth/hooks/use-auth"
-
-const mainNavigation = [
-	{
-		title: "Dashboard",
-		url: "/portal/dashboard",
-		icon: LayoutDashboard,
-	},
-]
-
-const businessNavigation = [
-	{
-		title: "Products",
-		url: "/portal/products",
-		icon: Package,
-	},
-	{
-		title: "Sales",
-		url: "/portal/sales",
-		icon: ShoppingCart,
-	},
-	{
-		title: "Transactions",
-		url: "/portal/transactions",
-		icon: ArrowLeftRight,
-	},
-]
-
-const analyticsNavigation = [
-	{
-		title: "Reports",
-		url: "/portal/reports",
-		icon: BarChart3,
-	},
-]
-
-const adminNavigation = [
-	{
-		title: "Users",
-		url: "/portal/users",
-		icon: Users,
-	},
-]
+import { menuGroups, menuItems } from "@/components/layout/menu-items"
 
 export default function AppSidebar() {
 	const pathname = usePathname()
-	const { user } = useAuth()
+	const { user, isAdmin } = useAuth()
 
-	const isAdmin = user?.role === "admin"
+	const accessibleMenuItems = menuItems.filter((item) => {
+		if (item.access === "all") {
+			return true
+		}
+
+		if (item.access === "admin") {
+			return isAdmin
+		}
+
+		return false
+	})
 
 	return (
 		<Sidebar collapsible="icon" variant="inset">
@@ -124,83 +83,35 @@ export default function AppSidebar() {
 
 			{/* Navigation */}
 			<SidebarContent>
-				{/* Overview */}
-				<SidebarGroup>
-					<SidebarGroupLabel>
-						Overview
-					</SidebarGroupLabel>
+				{menuGroups.map((group) => {
+					const items = accessibleMenuItems.filter(
+						(item) => item.group === group
+					)
 
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{mainNavigation.map((item) => (
-								<NavigationItem
-									key={item.url}
-									item={item}
-									pathname={pathname}
-								/>
-							))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
+					if (items.length === 0) {
+						return null
+					}
 
-				{/* Business */}
-				<SidebarGroup>
-					<SidebarGroupLabel>
-						Business
-					</SidebarGroupLabel>
+					return (
+						<SidebarGroup key={group}>
+							<SidebarGroupLabel>
+								{group}
+							</SidebarGroupLabel>
 
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{businessNavigation.map((item) => (
-								<NavigationItem
-									key={item.url}
-									item={item}
-									pathname={pathname}
-								/>
-							))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-
-				{/* Analytics */}
-				<SidebarGroup>
-					<SidebarGroupLabel>
-						Analytics
-					</SidebarGroupLabel>
-
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{analyticsNavigation.map((item) => (
-								<NavigationItem
-									key={item.url}
-									item={item}
-									pathname={pathname}
-								/>
-							))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-
-				{/* Administration */}
-				{isAdmin && (
-					<SidebarGroup>
-						<SidebarGroupLabel>
-							Administration
-						</SidebarGroupLabel>
-
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{adminNavigation.map((item) => (
-									<NavigationItem
-										key={item.url}
-										item={item}
-										pathname={pathname}
-									/>
-								))}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-				)}
+							<SidebarGroupContent>
+								<SidebarMenu>
+									{items.map((item) => (
+										<NavigationItem
+											key={item.url}
+											item={item}
+											pathname={pathname}
+										/>
+									))}
+								</SidebarMenu>
+							</SidebarGroupContent>
+						</SidebarGroup>
+					)
+				})}
 			</SidebarContent>
 
 			{/* Account */}
@@ -276,11 +187,7 @@ function NavigationItem({
 	item,
 	pathname,
 }: {
-	item: {
-		title: string
-		url: string
-		icon: React.ComponentType<{ className?: string }>
-	}
+	item: (typeof menuItems)[number]
 	pathname: string
 }) {
 	const Icon = item.icon
