@@ -31,7 +31,7 @@ export default function PortalLayout({
 				<SidebarInset>
 					<AppHeader headerTitle={titleCase(pageTitle ?? "")} />
 
-					<main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+					<main className="flex flex-1 flex-col gap-4 p-4 pt-0 my-2">
 						{children}
 					</main>
 				</SidebarInset>
