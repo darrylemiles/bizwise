@@ -9,8 +9,13 @@ import {
 } from "@/components/ui/separator"
 
 import ThemeToggle from "@/components/theme-toggle"
+import { APP_NAME_CONFIGS } from "@/constants"
 
-export default function AppHeader() {
+interface AppHeaderProps {
+  headerTitle?: string
+}
+
+export default function AppHeader({ headerTitle = APP_NAME_CONFIGS.NAME }: AppHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" />
@@ -22,7 +27,7 @@ export default function AppHeader() {
 
       <div className="flex flex-1 items-center">
         <h1 className="text-sm font-medium">
-          Bizwise
+          {headerTitle}
         </h1>
       </div>
 
