@@ -1,29 +1,33 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Trash2, Plus } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useFieldArray, useForm } from "react-hook-form"
+import { toast } from "sonner"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
-import { RemoteSelect } from "@/components/remote-select"
+import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
+import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { createSale, getSales } from "@/modules/sales/sales.api"
 import type { SalePayload } from "@/modules/sales/sales.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
 import { getProducts } from "@/modules/products/products.api"
+import { saleFormSchema, type SaleFormValues } from "@/modules/sales/schemas/sale-form.schema"
 
 const initialRow = { product: "", quantity: 1 }
 
 export default function SalesPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
-	const [items, setItems] = useState<Array<{ product: string; quantity: number }>>([initialRow])
-	const [account, setAccount] = useState("")
-	const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10))
+	const form = useForm<z.input<typeof saleFormSchema>, unknown, SaleFormValues>({ resolver: zodResolver(saleFormSchema), defaultValues: { account: "", saleDate: new Date().toISOString().slice(0, 10), items: [initialRow] } })
+	const itemsField = useFieldArray({ control: form.control, name: "items" })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
 	const productsQuery = useQuery({ queryKey: ["products", "lookup"], queryFn: () => getProducts({ page: 1, limit: 100 }) })
@@ -35,24 +39,16 @@ export default function SalesPage() {
 	const createMutation = useMutation({
 		mutationFn: (payload: SalePayload) => createSale(payload),
 		onSuccess: async () => {
-			setItems([initialRow])
-			setAccount("")
-			setSaleDate(new Date().toISOString().slice(0, 10))
+			form.reset({ account: "", saleDate: new Date().toISOString().slice(0, 10), items: [initialRow] })
+			toast.success("Sale created")
 			await queryClient.invalidateQueries({ queryKey: ["sales"] })
 			await queryClient.invalidateQueries({ queryKey: ["products"] })
 			await queryClient.invalidateQueries({ queryKey: ["accounts"] })
 		},
+		onError: () => toast.error("Unable to create sale"),
 	})
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		const payload: SalePayload = {
-			account,
-			saleDate: saleDate || undefined,
-			items: items.filter((item) => item.product && item.quantity > 0),
-		}
-		createMutation.mutate(payload)
-	}
+	const handleSubmit = (values: SaleFormValues) => createMutation.mutate({ ...values, saleDate: values.saleDate || undefined })
 
 	return (
 		<div className="space-y-6">
@@ -68,25 +64,19 @@ export default function SalesPage() {
 						<CardDescription>Post a sale, update stock, and record an income transaction.</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form className="space-y-4" onSubmit={handleSubmit}>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Account</label>
-								<RemoteSelect options={accountOptions} value={account} onChange={(event) => setAccount(event.target.value)} isLoading={accountsQuery.isLoading} />
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Sale date</label>
-								<Input type="date" value={saleDate} onChange={(event) => setSaleDate(event.target.value)} />
-							</div>
+						<form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+							<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
+							<FormDatePicker control={form.control} name="saleDate" label="Sale date" />
 							<div className="space-y-3">
 								<div className="flex items-center justify-between">
 									<label className="text-sm font-medium">Items</label>
-									<Button type="button" variant="outline" size="sm" onClick={() => setItems((current) => [...current, { ...initialRow }])}><Plus className="mr-1 size-4" />Add item</Button>
+										<Button type="button" variant="outline" size="sm" onClick={() => itemsField.append({ ...initialRow })}><Plus className="mr-1 size-4" />Add item</Button>
 								</div>
-								{items.map((item, index) => (
-									<div key={index} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2">
-										<RemoteSelect options={productOptions} value={item.product} onChange={(event) => setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, product: event.target.value } : row))} isLoading={productsQuery.isLoading} />
-										<Input type="number" min="1" value={item.quantity} onChange={(event) => setItems((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, quantity: Number(event.target.value) } : row))} />
-										<Button type="button" variant="destructive" size="icon" onClick={() => setItems((current) => current.length === 1 ? current : current.filter((_, rowIndex) => rowIndex !== index))}><Trash2 className="size-4" /></Button>
+								{itemsField.fields.map((item, index) => (
+									<div key={item.id} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2">
+										<FormField><FormLabel className="sr-only">Product</FormLabel><FormSelect control={form.control} name={`items.${index}.product`} label="" options={productOptions} disabled={productsQuery.isLoading} /></FormField>
+										<FormField><FormLabel className="sr-only">Quantity</FormLabel><Input type="number" min="1" {...form.register(`items.${index}.quantity`)} /><FormMessage>{form.formState.errors.items?.[index]?.quantity?.message}</FormMessage></FormField>
+										<Button type="button" variant="destructive" size="icon" aria-label="Remove sale item" onClick={() => itemsField.remove(index)}><Trash2 className="size-4" /></Button>
 									</div>
 								))}
 							</div>

@@ -1,20 +1,28 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Trash2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
-import { RemoteSelect } from "@/components/remote-select"
+import { Textarea } from "@/components/ui/textarea"
+import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
+import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { createTransaction, deleteTransaction, getTransactions } from "@/modules/transactions/transactions.api"
-import type { TransactionPayload, TransactionType } from "@/modules/transactions/transactions.types"
+import type { TransactionPayload } from "@/modules/transactions/transactions.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
 import { getCategories } from "@/modules/categories/categories.api"
+import { transactionFormSchema, type TransactionFormValues } from "@/modules/transactions/schemas/transaction-form.schema"
 
 const initialForm: TransactionPayload = {
 	type: "income",
@@ -31,7 +39,8 @@ export default function TransactionsPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
 	const [filters, setFilters] = useState({ type: "", account: "", category: "" })
-	const [form, setForm] = useState<TransactionPayload>(initialForm)
+	const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+	const form = useForm<z.input<typeof transactionFormSchema>, unknown, TransactionFormValues>({ resolver: zodResolver(transactionFormSchema), defaultValues: initialForm })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
 	const categoriesQuery = useQuery({ queryKey: ["categories", "lookup"], queryFn: () => getCategories({ page: 1, limit: 100 }) })
@@ -43,26 +52,30 @@ export default function TransactionsPage() {
 	const saveMutation = useMutation({
 		mutationFn: (payload: TransactionPayload) => createTransaction(payload),
 		onSuccess: async () => {
-			setForm(initialForm)
+			form.reset(initialForm)
+			toast.success("Transaction created")
 			await queryClient.invalidateQueries({ queryKey: ["transactions"] })
 		},
+		onError: () => toast.error("Unable to create transaction"),
 	})
 
 	const removeMutation = useMutation({
 		mutationFn: (id: string) => deleteTransaction(id),
 		onSuccess: async () => {
+			setDeleteTarget(null)
+			toast.success("Transaction deleted")
 			await queryClient.invalidateQueries({ queryKey: ["transactions"] })
 		},
+		onError: () => toast.error("Unable to delete transaction"),
 	})
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
+	const selectedType = useWatch({ control: form.control, name: "type" })
+	const handleSubmit = (values: TransactionFormValues) => {
 		const payload: TransactionPayload = {
-			...form,
-			amount: Number(form.amount),
-			date: form.date || undefined,
-			destinationAccount: form.type === "transfer" ? form.destinationAccount || undefined : undefined,
-			category: form.type === "income" || form.type === "expense" ? form.category || undefined : undefined,
+			...values,
+			date: values.date || undefined,
+			destinationAccount: values.type === "transfer" ? values.destinationAccount || undefined : undefined,
+			category: values.type === "income" || values.type === "expense" ? values.category || undefined : undefined,
 		}
 		saveMutation.mutate(payload)
 	}
@@ -81,49 +94,19 @@ export default function TransactionsPage() {
 						<CardDescription>Income, expenses, loans, capital, and transfers all post to accounts.</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-							<div className="space-y-2 md:col-span-2">
-								<label className="text-sm font-medium">Type</label>
-								<select className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as TransactionType }))}>
-									<option value="income">Income</option>
-									<option value="expense">Expense</option>
-									<option value="loan">Loan</option>
-									<option value="capital">Capital</option>
-									<option value="transfer">Transfer</option>
-								</select>
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Amount</label>
-								<Input type="number" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: Number(event.target.value) }))} />
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Date</label>
-								<Input type="date" value={form.date ?? ""} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} />
-							</div>
-							<div className="space-y-2 md:col-span-2">
-								<label className="text-sm font-medium">Account</label>
-								<RemoteSelect options={accountOptions} value={form.account} onChange={(event) => setForm((current) => ({ ...current, account: event.target.value }))} isLoading={accountsQuery.isLoading} />
-							</div>
-							{form.type === "transfer" ? (
-								<div className="space-y-2 md:col-span-2">
-									<label className="text-sm font-medium">Destination account</label>
-									<RemoteSelect options={accountOptions} value={form.destinationAccount ?? ""} onChange={(event) => setForm((current) => ({ ...current, destinationAccount: event.target.value }))} isLoading={accountsQuery.isLoading} />
-								</div>
+						<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit(handleSubmit)}>
+							<FormSelect control={form.control} name="type" label="Type" options={["income", "expense", "loan", "capital", "transfer"].map((value) => ({ value, label: value }))} />
+							<FormField><FormLabel htmlFor="transaction-amount">Amount</FormLabel><Input id="transaction-amount" type="number" step="0.01" {...form.register("amount")} /><FormMessage>{form.formState.errors.amount?.message}</FormMessage></FormField>
+							<FormDatePicker control={form.control} name="date" label="Date" />
+							<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
+							{selectedType === "transfer" ? (
+								<FormSelect control={form.control} name="destinationAccount" label="Destination account" options={accountOptions} disabled={accountsQuery.isLoading} />
 							) : null}
-							{form.type === "income" || form.type === "expense" ? (
-								<div className="space-y-2 md:col-span-2">
-									<label className="text-sm font-medium">Category</label>
-									<RemoteSelect options={categoryOptions} value={form.category ?? ""} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} isLoading={categoriesQuery.isLoading} />
-								</div>
+							{selectedType === "income" || selectedType === "expense" ? (
+								<FormSelect control={form.control} name="category" label="Category" options={categoryOptions} disabled={categoriesQuery.isLoading} />
 							) : null}
-							<div className="space-y-2 md:col-span-2">
-								<label className="text-sm font-medium">Description</label>
-								<textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.description ?? ""} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
-							</div>
-							<div className="space-y-2 md:col-span-2">
-								<label className="text-sm font-medium">Reference</label>
-								<Input value={form.reference ?? ""} onChange={(event) => setForm((current) => ({ ...current, reference: event.target.value }))} />
-							</div>
+							<FormField className="md:col-span-2"><FormLabel htmlFor="transaction-description">Description</FormLabel><Textarea id="transaction-description" {...form.register("description")} /><FormMessage>{form.formState.errors.description?.message}</FormMessage></FormField>
+							<FormField className="md:col-span-2"><FormLabel htmlFor="transaction-reference">Reference</FormLabel><Input id="transaction-reference" {...form.register("reference")} /><FormMessage>{form.formState.errors.reference?.message}</FormMessage></FormField>
 							<div className="md:col-span-2">
 								<Button type="submit" className="w-full" disabled={saveMutation.isPending}>Create transaction</Button>
 							</div>
@@ -138,16 +121,9 @@ export default function TransactionsPage() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div className="grid gap-3 md:grid-cols-3">
-							<select className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm" value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}>
-								<option value="">All types</option>
-								<option value="income">Income</option>
-								<option value="expense">Expense</option>
-								<option value="loan">Loan</option>
-								<option value="capital">Capital</option>
-								<option value="transfer">Transfer</option>
-							</select>
-							<RemoteSelect options={accountOptions} value={filters.account} onChange={(event) => setFilters((current) => ({ ...current, account: event.target.value }))} placeholder="All accounts" isLoading={accountsQuery.isLoading} />
-							<RemoteSelect options={categoryOptions} value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))} placeholder="All categories" isLoading={categoriesQuery.isLoading} />
+							<Select value={filters.type} onValueChange={(value) => setFilters((current) => ({ ...current, type: value ?? "" }))}><SelectTrigger><SelectValue placeholder="All types" /></SelectTrigger><SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem><SelectItem value="loan">Loan</SelectItem><SelectItem value="capital">Capital</SelectItem><SelectItem value="transfer">Transfer</SelectItem></SelectContent></Select>
+							<Select value={filters.account} onValueChange={(value) => setFilters((current) => ({ ...current, account: value ?? "" }))}><SelectTrigger><SelectValue placeholder="All accounts" /></SelectTrigger><SelectContent>{accountOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
+							<Select value={filters.category} onValueChange={(value) => setFilters((current) => ({ ...current, category: value ?? "" }))}><SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger><SelectContent>{categoryOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
 						</div>
 
 						<DataTable
@@ -163,17 +139,14 @@ export default function TransactionsPage() {
 								{ head: "Category", render: (item) => item.category ? (typeof item.category === "string" ? item.category : item.category.name) : "-" },
 								{ head: "Date", render: (item) => formatDate(item.date) },
 								{ head: "Actions", render: (item) => (
-									<Button size="sm" variant="destructive" onClick={() => {
-										if (window.confirm("Delete this transaction?")) {
-											removeMutation.mutate(item._id)
-										}
-									}}><Trash2 className="size-4" /></Button>
+									<Button size="sm" variant="destructive" aria-label="Delete transaction" onClick={() => setDeleteTarget(item._id)}><Trash2 className="size-4" /></Button>
 								) },
 							]}
 						/>
 					</CardContent>
 				</Card>
 			</div>
+			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete transaction?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel render={<Button variant="outline">Cancel</Button>} /><AlertDialogAction render={<Button variant="destructive" disabled={removeMutation.isPending} onClick={() => deleteTarget && removeMutation.mutate(deleteTarget)}>Delete transaction</Button>} /></AlertDialogFooter></AlertDialogContent></AlertDialog>
 		</div>
 	)
 }

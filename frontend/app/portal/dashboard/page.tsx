@@ -3,11 +3,12 @@
 import { useState } from "react"
 import type { ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowDownLeft, ArrowUpRight, Banknote, Boxes, ChartColumn, CircleDollarSign, Package, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Banknote, Boxes, CircleDollarSign, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { FormField, FormLabel } from "@/components/ui/form"
+import { DatePickerField } from "@/components/shared/date-picker-field"
 import { DataTable } from "@/components/data-table"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { getDashboard } from "@/modules/dashboard/dashboard.api"
@@ -32,14 +33,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">From</label>
-            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">To</label>
-            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-          </div>
+          <FormField><FormLabel className="text-xs text-muted-foreground">From</FormLabel><DatePickerField value={from} onChange={setFrom} /></FormField>
+          <FormField><FormLabel className="text-xs text-muted-foreground">To</FormLabel><DatePickerField value={to} onChange={setTo} /></FormField>
           <Button variant="outline" onClick={() => dashboardQuery.refetch()}>Refresh</Button>
         </div>
       </div>

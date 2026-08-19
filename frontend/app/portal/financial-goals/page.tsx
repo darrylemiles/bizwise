@@ -1,20 +1,30 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import type { FormEvent } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Pencil, PiggyBank, Trash2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
-import { RemoteSelect } from "@/components/remote-select"
-import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { Textarea } from "@/components/ui/textarea"
+import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
+import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { formatCurrency, formatDate } from "@/lib/format"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { contributeToGoal, createFinancialGoal, deleteFinancialGoal, getFinancialGoals, updateFinancialGoal } from "@/modules/financial-goals/financial-goals.api"
 import type { FinancialGoalPayload } from "@/modules/financial-goals/financial-goals.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
+import { financialGoalFormSchema, type FinancialGoalFormValues } from "@/modules/financial-goals/schemas/financial-goal-form.schema"
+import { goalContributionSchema, type GoalContributionValues } from "@/modules/financial-goals/schemas/goal-contribution.schema"
 
 const initialForm: FinancialGoalPayload = {
 	name: "",
@@ -31,7 +41,10 @@ export default function FinancialGoalsPage() {
 	const [page, setPage] = useState(1)
 	const [status, setStatus] = useState("")
 	const [editingId, setEditingId] = useState<string | null>(null)
-	const [form, setForm] = useState<FinancialGoalPayload>(initialForm)
+	const [contributionTarget, setContributionTarget] = useState<{ id: string; name: string } | null>(null)
+	const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+	const form = useForm<z.input<typeof financialGoalFormSchema>, unknown, FinancialGoalFormValues>({ resolver: zodResolver(financialGoalFormSchema), defaultValues: initialForm })
+	const contributionForm = useForm<z.input<typeof goalContributionSchema>, unknown, GoalContributionValues>({ resolver: zodResolver(goalContributionSchema), defaultValues: { amount: 50 } })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
 	const goalsQuery = useQuery({ queryKey: ["financial-goals", page, status], queryFn: () => getFinancialGoals({ page, limit: 10, status: status || undefined }) })
@@ -42,39 +55,35 @@ export default function FinancialGoalsPage() {
 		mutationFn: (payload: FinancialGoalPayload) => editingId ? updateFinancialGoal(editingId, payload) : createFinancialGoal(payload),
 		onSuccess: async () => {
 			setEditingId(null)
-			setForm(initialForm)
+			form.reset(initialForm)
+			toast.success(editingId ? "Goal updated" : "Goal created")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
+		onError: () => toast.error("Unable to save goal"),
 	})
 
 	const contributeMutation = useMutation({
 		mutationFn: ({ id, amount }: { id: string; amount: number }) => contributeToGoal(id, { amount }),
 		onSuccess: async () => {
+			setContributionTarget(null)
+			contributionForm.reset({ amount: 50 })
+			toast.success("Contribution added")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
+		onError: () => toast.error("Unable to add contribution"),
 	})
 
 	const removeMutation = useMutation({
 		mutationFn: (id: string) => deleteFinancialGoal(id),
 		onSuccess: async () => {
+			setDeleteTarget(null)
+			toast.success("Goal deleted")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
+		onError: () => toast.error("Unable to delete goal"),
 	})
 
-	useEffect(() => {
-		setEditingId(null)
-		setForm(initialForm)
-	}, [page])
-
 	const goals = goalsQuery.data?.data ?? []
-
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		saveMutation.mutate({
-			...form,
-			targetAmount: Number(form.targetAmount),
-		})
-	}
 
 	return (
 		<div className="space-y-6">
@@ -91,30 +100,15 @@ export default function FinancialGoalsPage() {
 					</CardHeader>
 					<CardContent>
 						{isAdmin ? (
-							<form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-								<div className="space-y-2 md:col-span-2">
-									<label className="text-sm font-medium">Name</label>
-									<Input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-								</div>
-								<div className="space-y-2 md:col-span-2">
-									<label className="text-sm font-medium">Description</label>
-									<textarea className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.description ?? ""} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
-								</div>
-								<div className="space-y-2">
-									<label className="text-sm font-medium">Target amount</label>
-									<Input type="number" step="0.01" value={form.targetAmount} onChange={(event) => setForm((current) => ({ ...current, targetAmount: Number(event.target.value) }))} />
-								</div>
-								<div className="space-y-2">
-									<label className="text-sm font-medium">Deadline</label>
-									<Input type="date" value={form.deadline} onChange={(event) => setForm((current) => ({ ...current, deadline: event.target.value }))} />
-								</div>
-								<div className="space-y-2 md:col-span-2">
-									<label className="text-sm font-medium">Account</label>
-									<RemoteSelect options={accountOptions} value={form.account} onChange={(event) => setForm((current) => ({ ...current, account: event.target.value }))} isLoading={accountsQuery.isLoading} />
-								</div>
+							<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
+								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-name">Name</FormLabel><Input id="goal-name" {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
+								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-description">Description</FormLabel><Textarea id="goal-description" {...form.register("description")} /><FormMessage>{form.formState.errors.description?.message}</FormMessage></FormField>
+								<FormField><FormLabel htmlFor="goal-target">Target amount</FormLabel><Input id="goal-target" type="number" step="0.01" {...form.register("targetAmount")} /><FormMessage>{form.formState.errors.targetAmount?.message}</FormMessage></FormField>
+								<FormDatePicker control={form.control} name="deadline" label="Deadline" />
+								<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
 								<div className="flex gap-2 md:col-span-2">
 									<Button type="submit" disabled={saveMutation.isPending}>{editingId ? "Save changes" : "Create goal"}</Button>
-									{editingId ? <Button type="button" variant="outline" onClick={() => { setEditingId(null); setForm(initialForm) }}>Cancel</Button> : null}
+									{editingId ? <Button type="button" variant="outline" onClick={() => { setEditingId(null); form.reset(initialForm) }}>Cancel</Button> : null}
 								</div>
 							</form>
 						) : (
@@ -130,18 +124,13 @@ export default function FinancialGoalsPage() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div className="flex items-center gap-3">
-							<select className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
-								<option value="">All statuses</option>
-								<option value="active">Active</option>
-								<option value="completed">Completed</option>
-								<option value="cancelled">Cancelled</option>
-							</select>
+							<Select value={status} onValueChange={(value) => setStatus(value ?? "")}><SelectTrigger className="w-44"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem></SelectContent></Select>
 						</div>
 
 						<DataTable
 							data={goals}
 							isLoading={goalsQuery.isLoading}
-							onPageChange={setPage}
+							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
 							page={goalsQuery.data?.pagination.page ?? page}
 							totalPages={goalsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
@@ -151,15 +140,10 @@ export default function FinancialGoalsPage() {
 								{ head: "Deadline", render: (item) => formatDate(item.deadline) },
 								{ head: "Actions", render: (item) => (
 									<div className="flex gap-2">
-										<Button size="sm" variant="outline" onClick={() => {
-											const amount = Number(window.prompt(`Contribute to ${item.name}:`, "50"))
-											if (!Number.isNaN(amount) && amount > 0) {
-												contributeMutation.mutate({ id: item._id, amount })
-											}
-										}}><PiggyBank className="size-4" /></Button>
+										<Button size="sm" variant="outline" aria-label={`Contribute to ${item.name}`} onClick={() => setContributionTarget({ id: item._id, name: item.name })}><PiggyBank className="size-4" /></Button>
 										{isAdmin ? <Button size="sm" variant="outline" onClick={() => {
 											setEditingId(item._id)
-											setForm({
+											form.reset({
 												name: item.name,
 												description: item.description ?? "",
 												targetAmount: item.targetAmount,
@@ -167,12 +151,8 @@ export default function FinancialGoalsPage() {
 												account: typeof item.account === "string" ? item.account : item.account._id,
 												status: item.status,
 											})
-										}}><Pencil className="size-4" /></Button> : null}
-										{isAdmin ? <Button size="sm" variant="destructive" onClick={() => {
-											if (window.confirm(`Delete ${item.name}?`)) {
-												removeMutation.mutate(item._id)
-											}
-										}}><Trash2 className="size-4" /></Button> : null}
+										}} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button> : null}
+										{isAdmin ? <Button size="sm" variant="destructive" aria-label={`Delete ${item.name}`} onClick={() => setDeleteTarget({ id: item._id, name: item.name })}><Trash2 className="size-4" /></Button> : null}
 									</div>
 								) },
 							]}
@@ -180,6 +160,8 @@ export default function FinancialGoalsPage() {
 					</CardContent>
 				</Card>
 			</div>
+			<Dialog open={!!contributionTarget} onOpenChange={(open) => !open && setContributionTarget(null)}><DialogContent><DialogHeader><DialogTitle>Add contribution</DialogTitle><DialogDescription>{contributionTarget?.name}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={contributionForm.handleSubmit((values) => contributionTarget && contributeMutation.mutate({ id: contributionTarget.id, amount: values.amount }))}><FormField><FormLabel htmlFor="contribution-amount">Amount</FormLabel><Input id="contribution-amount" type="number" step="0.01" {...contributionForm.register("amount")} /><FormMessage>{contributionForm.formState.errors.amount?.message}</FormMessage></FormField><DialogFooter><Button type="submit" disabled={contributeMutation.isPending}>Add contribution</Button></DialogFooter></form></DialogContent></Dialog>
+			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete goal?</AlertDialogTitle><AlertDialogDescription>This will permanently delete {deleteTarget?.name}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel render={<Button variant="outline">Cancel</Button>} /><AlertDialogAction render={<Button variant="destructive" disabled={removeMutation.isPending} onClick={() => deleteTarget && removeMutation.mutate(deleteTarget.id)}>Delete goal</Button>} /></AlertDialogFooter></AlertDialogContent></AlertDialog>
 		</div>
 	)
 }

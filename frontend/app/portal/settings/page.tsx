@@ -1,42 +1,42 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { updateUser } from "@/modules/users/users.api"
+import { settingsFormSchema, type SettingsFormValues } from "@/modules/settings/schemas/settings-form.schema"
 
 export default function SettingsPage() {
 	const queryClient = useQueryClient()
 	const { user } = useAuth()
-	const [name, setName] = useState("")
-	const [username, setUsername] = useState("")
-	const [password, setPassword] = useState("")
+	const form = useForm<SettingsFormValues>({ resolver: zodResolver(settingsFormSchema), defaultValues: { name: "", username: "", password: "" } })
 
 	useEffect(() => {
-		setName(user?.name ?? "")
-		setUsername(user?.username ?? "")
-	}, [user])
+		form.reset({ name: user?.name ?? "", username: user?.username ?? "", password: "" })
+	}, [user, form])
 
 	const saveMutation = useMutation({
-		mutationFn: () => {
+		mutationFn: (values: SettingsFormValues) => {
 			if (!user?.id) {
 				throw new Error("Missing user id")
 			}
 
-			return updateUser(user.id, {
-				name,
-				username,
-				password: password || undefined,
-			})
+			return updateUser(user.id, { ...values, password: values.password || undefined })
 		},
 		onSuccess: async () => {
-			setPassword("")
+			form.reset({ ...form.getValues(), password: "" })
+			toast.success("Profile updated")
 			await queryClient.invalidateQueries({ queryKey: ["auth", "me"] })
 		},
+		onError: () => toast.error("Unable to update profile"),
 	})
 
 	return (
@@ -52,19 +52,10 @@ export default function SettingsPage() {
 					<CardDescription>Update your own account details.</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form className="space-y-4" onSubmit={(event) => { event.preventDefault(); saveMutation.mutate() }}>
-						<div className="space-y-2">
-							<label className="text-sm font-medium">Name</label>
-							<Input value={name} onChange={(event) => setName(event.target.value)} />
-						</div>
-						<div className="space-y-2">
-							<label className="text-sm font-medium">Username</label>
-							<Input value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} />
-						</div>
-						<div className="space-y-2">
-							<label className="text-sm font-medium">New password</label>
-							<Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-						</div>
+					<form className="space-y-4" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
+						<FormField><FormLabel htmlFor="settings-name">Name</FormLabel><Input id="settings-name" aria-invalid={!!form.formState.errors.name} {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
+						<FormField><FormLabel htmlFor="settings-username">Username</FormLabel><Input id="settings-username" aria-invalid={!!form.formState.errors.username} {...form.register("username", { onChange: (event) => { event.target.value = event.target.value.toLowerCase() } })} /><FormMessage>{form.formState.errors.username?.message}</FormMessage></FormField>
+						<FormField><FormLabel htmlFor="settings-password">New password</FormLabel><Input id="settings-password" type="password" aria-invalid={!!form.formState.errors.password} {...form.register("password")} /><FormMessage>{form.formState.errors.password?.message}</FormMessage></FormField>
 						<div className="flex items-center gap-3">
 							<Button type="submit" disabled={saveMutation.isPending}>Save profile</Button>
 							<p className="text-sm text-muted-foreground">Role: {user?.role ?? "user"}</p>

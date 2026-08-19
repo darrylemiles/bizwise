@@ -1,16 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import type { FormEvent } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Pencil, Trash2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
+import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
+import { FormSelect } from "@/components/shared/form-controls"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { createUser, deleteUser, getUsers, updateUser, updateUserRole } from "@/modules/users/users.api"
 import type { UserPayload } from "@/modules/users/users.types"
+import { userFormSchema, type UserFormValues } from "@/modules/users/schemas/user-form.schema"
 
 const initialForm: UserPayload = {
 	name: "",
@@ -23,7 +30,8 @@ export default function UsersPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
 	const [editingId, setEditingId] = useState<string | null>(null)
-	const [form, setForm] = useState<UserPayload>(initialForm)
+	const [deleteTarget, setDeleteTarget] = useState<{ id: string; username: string } | null>(null)
+	const form = useForm<UserFormValues>({ resolver: zodResolver(userFormSchema), defaultValues: initialForm })
 
 	const usersQuery = useQuery({
 		queryKey: ["users", page],
@@ -34,40 +42,37 @@ export default function UsersPage() {
 		mutationFn: (payload: UserPayload) => editingId ? updateUser(editingId, payload) : createUser(payload),
 		onSuccess: async () => {
 			setEditingId(null)
-			setForm(initialForm)
+			form.reset(initialForm)
+			toast.success(editingId ? "User updated" : "User created")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
+		onError: () => toast.error("Unable to save user"),
 	})
 
 	const roleMutation = useMutation({
 		mutationFn: ({ id, role }: { id: string; role: UserPayload["role"] }) => updateUserRole(id, role),
 		onSuccess: async () => {
+			toast.success("Role updated")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
+		onError: () => toast.error("Unable to update role"),
 	})
 
 	const removeMutation = useMutation({
 		mutationFn: (id: string) => deleteUser(id),
 		onSuccess: async () => {
+			setDeleteTarget(null)
+			toast.success("User deleted")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
+		onError: () => toast.error("Unable to delete user"),
 	})
-
-	useEffect(() => {
-		setEditingId(null)
-		setForm(initialForm)
-	}, [page])
 
 	const users = usersQuery.data?.data ?? []
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		saveMutation.mutate(form)
-	}
-
 	const startEdit = (user: { _id: string; name: string; username: string; role: UserPayload["role"] }) => {
 		setEditingId(user._id)
-		setForm({ name: user.name, username: user.username, password: "", role: user.role })
+		form.reset({ name: user.name, username: user.username, password: "", role: user.role })
 	}
 
 	return (
@@ -84,29 +89,14 @@ export default function UsersPage() {
 						<CardDescription>Admin-only user management.</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form className="space-y-4" onSubmit={handleSubmit}>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Name</label>
-								<Input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Username</label>
-								<Input value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value.toLowerCase() }))} />
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Password</label>
-								<Input type="password" value={form.password ?? ""} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
-							</div>
-							<div className="space-y-2">
-								<label className="text-sm font-medium">Role</label>
-								<select className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as UserPayload["role"] }))}>
-									<option value="user">User</option>
-									<option value="admin">Admin</option>
-								</select>
-							</div>
+						<form className="space-y-4" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
+							<FormField><FormLabel htmlFor="user-name">Name</FormLabel><Input id="user-name" aria-invalid={!!form.formState.errors.name} {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
+							<FormField><FormLabel htmlFor="user-username">Username</FormLabel><Input id="user-username" aria-invalid={!!form.formState.errors.username} {...form.register("username", { onChange: (event) => { event.target.value = event.target.value.toLowerCase() } })} /><FormMessage>{form.formState.errors.username?.message}</FormMessage></FormField>
+							<FormField><FormLabel htmlFor="user-password">Password</FormLabel><Input id="user-password" type="password" aria-invalid={!!form.formState.errors.password} {...form.register("password")} /><FormMessage>{form.formState.errors.password?.message}</FormMessage></FormField>
+							<FormSelect control={form.control} name="role" label="Role" options={[{ value: "user", label: "User" }, { value: "admin", label: "Admin" }]} />
 							<div className="flex gap-2">
 								<Button type="submit" disabled={saveMutation.isPending}>{editingId ? "Save changes" : "Create user"}</Button>
-								{editingId ? <Button type="button" variant="outline" onClick={() => { setEditingId(null); setForm(initialForm) }}>Cancel</Button> : null}
+								{editingId ? <Button type="button" variant="outline" onClick={() => { setEditingId(null); form.reset(initialForm) }}>Cancel</Button> : null}
 							</div>
 						</form>
 					</CardContent>
@@ -121,26 +111,19 @@ export default function UsersPage() {
 						<DataTable
 							data={users}
 							isLoading={usersQuery.isLoading}
-							onPageChange={setPage}
+							 onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
 							page={usersQuery.data?.pagination.page ?? page}
 							totalPages={usersQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
 								{ head: "Username", render: (item) => item.username },
 								{ head: "Role", render: (item) => (
-									<select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={item.role} onChange={(event) => roleMutation.mutate({ id: item._id, role: event.target.value as UserPayload["role"] })}>
-										<option value="user">User</option>
-										<option value="admin">Admin</option>
-									</select>
+									<Select value={item.role} onValueChange={(role) => roleMutation.mutate({ id: item._id, role: role as UserPayload["role"] })}><SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">User</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select>
 								) },
 								{ head: "Actions", render: (item) => (
 									<div className="flex gap-2">
-										<Button size="sm" variant="outline" onClick={() => startEdit(item)}><Pencil className="size-4" /></Button>
-										<Button size="sm" variant="destructive" onClick={() => {
-											if (window.confirm(`Delete ${item.username}?`)) {
-												removeMutation.mutate(item._id)
-											}
-										}}><Trash2 className="size-4" /></Button>
+										<Button size="sm" variant="outline" aria-label={`Edit ${item.username}`} onClick={() => startEdit(item)}><Pencil className="size-4" /></Button>
+										<Button size="sm" variant="destructive" aria-label={`Delete ${item.username}`} onClick={() => setDeleteTarget({ id: item._id, username: item.username })}><Trash2 className="size-4" /></Button>
 									</div>
 								) },
 							]}
@@ -148,6 +131,7 @@ export default function UsersPage() {
 					</CardContent>
 				</Card>
 			</div>
+			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete user?</AlertDialogTitle><AlertDialogDescription>This will permanently delete {deleteTarget?.username}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel render={<Button variant="outline">Cancel</Button>} /><AlertDialogAction render={<Button variant="destructive" disabled={removeMutation.isPending} onClick={() => deleteTarget && removeMutation.mutate(deleteTarget.id)}>Delete user</Button>} /></AlertDialogFooter></AlertDialogContent></AlertDialog>
 		</div>
 	)
 }
