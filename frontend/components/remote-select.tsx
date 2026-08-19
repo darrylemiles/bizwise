@@ -1,14 +1,19 @@
-import type { SelectHTMLAttributes } from "react"
+import type { ComponentProps } from "react"
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Option {
 	label: string
 	value: string
 }
 
-interface RemoteSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface RemoteSelectProps extends Omit<ComponentProps<typeof Select>, "value" | "onValueChange" | "children"> {
 	options: Option[]
 	placeholder?: string
 	isLoading?: boolean
+	className?: string
+	value?: string
+	onValueChange?: (value: string | null) => void
 }
 
 export function RemoteSelect({
@@ -16,19 +21,18 @@ export function RemoteSelect({
 	placeholder = "Select an option",
 	isLoading,
 	className,
+	value,
+	onValueChange,
 	...props
 }: RemoteSelectProps) {
 	return (
-		<select
-			{...props}
-			className={className ?? "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"}
-		>
-			<option value="">{isLoading ? "Loading..." : placeholder}</option>
-			{options.map((option) => (
-				<option key={option.value} value={option.value}>
-					{option.label}
-				</option>
-			))}
-		</select>
+		<Select {...props} value={value ?? ""} onValueChange={onValueChange}>
+			<SelectTrigger className={className} disabled={props.disabled || isLoading}>
+				<SelectValue placeholder={isLoading ? "Loading..." : placeholder} />
+			</SelectTrigger>
+			<SelectContent>
+				{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+			</SelectContent>
+		</Select>
 	)
 }

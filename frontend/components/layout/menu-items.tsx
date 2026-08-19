@@ -1,10 +1,11 @@
 import { ArrowLeftRight, BarChart3, Building2, Layers3, LayoutDashboard, Package, PiggyBank, Settings, ShoppingCart, Users } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 export type MenuAccess = "all" | "admin"
 
 export type MenuGroupName = "Overview" | "Business" | "Analytics" | "Administration"
 
-type IconType = any
+type IconType = LucideIcon
 
 export type MenuItem = {
 	icon: IconType

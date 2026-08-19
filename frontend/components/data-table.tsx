@@ -30,8 +30,8 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
 	return (
 		<div className="space-y-4">
-			<div className="overflow-hidden rounded-lg border bg-background">
-				<table className="w-full text-sm">
+			<div className="max-w-full overflow-x-auto overflow-y-auto rounded-lg border bg-background">
+				<table className="w-full min-w-[640px] text-sm">
 					<thead className="border-b bg-muted/50 text-left text-muted-foreground">
 						<tr>
 							{columns.map((column) => (
