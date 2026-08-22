@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
 import { Button } from "@/components/ui/button"
+import { getErrorMessage } from "@/lib/http-error"
 import {
 	Card,
 	CardContent,
@@ -109,8 +110,7 @@ export function LoginForm() {
 
 					{loginMutation.isError && (
 						<p className="text-sm text-destructive">
-							Unable to sign in. Please check your
-							username and password.
+							{getErrorMessage(loginMutation.error, "Unable to sign in. Please check your username and password.")}
 						</p>
 					)}
 

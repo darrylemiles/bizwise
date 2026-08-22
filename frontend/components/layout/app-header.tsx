@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/separator"
 
 import ThemeToggle from "@/components/theme-toggle"
+import ThemePalette from "@/components/theme-palette"
 import { APP_NAME_CONFIGS } from "@/constants"
 
 interface AppHeaderProps {
@@ -31,7 +32,10 @@ export default function AppHeader({ headerTitle = APP_NAME_CONFIGS.NAME }: AppHe
         </h1>
       </div>
 
-      <ThemeToggle />
+      <div className="flex items-center gap-1">
+        <ThemePalette />
+        <ThemeToggle />
+        </div>
     </header>
   )
 }
