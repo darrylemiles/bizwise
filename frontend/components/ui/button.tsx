@@ -2,6 +2,7 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-2xl border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -38,7 +39,7 @@ const buttonVariants = cva(
   }
 )
 
-function Button({
+function BaseButton({
   className,
   variant = "default",
   size = "default",
@@ -53,4 +54,15 @@ function Button({
   )
 }
 
+type ButtonProps = Parameters<typeof BaseButton>[0]
+
+function Button(props: ButtonProps) {
+  if (props["aria-label"]) {
+    return <Tooltip><TooltipTrigger render={<BaseButton {...props} />} /><TooltipContent>{props["aria-label"]}</TooltipContent></Tooltip>
+  }
+
+  return <BaseButton {...props} />
+}
+
 export { Button, buttonVariants }
+export type { ButtonProps }

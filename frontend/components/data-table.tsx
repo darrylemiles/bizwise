@@ -3,7 +3,9 @@ import { useState, type ReactNode } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ViewToggle, type DataViewMode } from "@/components/shared/view-toggle"
+import { getErrorMessage } from "@/lib/http-error"
 
 type Column<T> = {
 	head: string
@@ -15,12 +17,17 @@ interface DataTableProps<T> {
 	data: T[]
 	emptyMessage?: string
 	errorMessage?: string
+	error?: unknown
 	onRetry?: () => void
 	isError?: boolean
 	cardRenderer?: (item: T) => ReactNode
 	isLoading?: boolean
 	onPageChange?: (page: number) => void
+	onPageSizeChange?: (pageSize: number) => void
 	page?: number
+	pageSize?: number
+	pageSizeOptions?: number[]
+	total?: number
 	totalPages?: number
 }
 
@@ -29,22 +36,28 @@ export function DataTable<T>({
 	data,
 	emptyMessage = "No records found",
 	errorMessage = "Unable to load data.",
+	error,
 	onRetry,
 	isError,
 	cardRenderer,
 	isLoading,
 	onPageChange,
+	onPageSizeChange,
 	page = 1,
+	pageSize = 10,
+	pageSizeOptions = [10, 25, 50, 100],
+	total = data.length,
 	totalPages = 1,
 }: DataTableProps<T>) {
 	const [view, setView] = useState<DataViewMode>("table")
+	const displayedErrorMessage = getErrorMessage(error, errorMessage)
 	const displayData = isLoading || isError ? [] : data
 	return (
 		<div className="space-y-4">
 			{cardRenderer ? <div className="flex justify-end"><ViewToggle value={view} onChange={setView} /></div> : null}
 			{view === "cards" && cardRenderer ? (
 				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-					{isLoading ? <div className="rounded-lg border p-6 text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">Loading...</div> : isError ? <div className="rounded-lg border p-6 text-sm text-destructive sm:col-span-2 xl:col-span-3"><div className="flex flex-col items-center gap-3"><span>{errorMessage}</span>{onRetry ? <Button type="button" variant="outline" size="sm" onClick={onRetry}>Retry</Button> : null}</div></div> : displayData.length === 0 ? <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">{emptyMessage}</div> : displayData.map((item, index) => <div key={index}>{cardRenderer(item)}</div>)}
+					{isLoading ? <div className="rounded-lg border p-6 text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">Loading...</div> : isError ? <div className="rounded-lg border p-6 text-sm text-destructive sm:col-span-2 xl:col-span-3"><div className="flex flex-col items-center gap-3"><span>{displayedErrorMessage}</span>{onRetry ? <Button type="button" variant="outline" size="sm" onClick={onRetry}>Retry</Button> : null}</div></div> : displayData.length === 0 ? <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">{emptyMessage}</div> : displayData.map((item, index) => <div key={index}>{cardRenderer(item)}</div>)}
 				</div>
 			) : (
 			<div className="max-w-full overflow-x-auto overflow-y-auto rounded-lg border bg-background">
@@ -69,7 +82,7 @@ export function DataTable<T>({
 							<tr>
 								<td className="px-4 py-10 text-center text-destructive" colSpan={columns.length}>
 									<div className="flex flex-col items-center gap-3">
-										<span>{errorMessage}</span>
+										<span>{displayedErrorMessage}</span>
 										<Button type="button" variant="outline" size="sm" onClick={onRetry}>Retry</Button>
 									</div>
 								</td>
@@ -96,11 +109,12 @@ export function DataTable<T>({
 			</div>
 			)}
 
-			{onPageChange && totalPages > 1 ? (
-				<div className="flex items-center justify-between">
-					<p className="text-sm text-muted-foreground">
-						Page {page} of {totalPages}
-					</p>
+			{onPageChange && (totalPages > 1 || onPageSizeChange) ? (
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex items-center gap-3 text-sm text-muted-foreground">
+						<span>Page {page} of {totalPages} ({total} total)</span>
+						{onPageSizeChange ? <Select value={String(pageSize)} onValueChange={(value) => value && onPageSizeChange(Number(value))}><SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger><SelectContent>{pageSizeOptions.map((option) => <SelectItem key={option} value={String(option)}>{option} / page</SelectItem>)}</SelectContent></Select> : null}
+					</div>
 
 					<div className="flex gap-2">
 						<Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
