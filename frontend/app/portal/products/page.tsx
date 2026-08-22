@@ -164,7 +164,7 @@ export default function ProductsPage() {
 							page={productsQuery.data?.pagination.page ?? page}
 							totalPages={productsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
-								{ head: "SKU", render: (item) => item.sku || "-" },
+								{ head: "Product Name", render: (item) => item.name || "-" },
 								{ head: "Status", render: (item) => <StatusBadge value={item.status} /> },
 								{ head: "Stock", render: (item) => `${formatNumber(item.quantity)} ${titleCase(item.unit)}` },
 								{ head: "Value", render: (item) => formatCurrency(item.quantity * item.costPrice) },
