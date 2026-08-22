@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { toApiDate } from "@/lib/date"
 import { createSale, getSales } from "@/modules/sales/sales.api"
 import type { SalePayload } from "@/modules/sales/sales.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
@@ -48,7 +49,7 @@ export default function SalesPage() {
 		onError: () => toast.error("Unable to create sale"),
 	})
 
-	const handleSubmit = (values: SaleFormValues) => createMutation.mutate({ ...values, saleDate: values.saleDate || undefined })
+	const handleSubmit = (values: SaleFormValues) => createMutation.mutate({ ...values, saleDate: toApiDate(values.saleDate) })
 
 	return (
 		<div className="space-y-6">
@@ -94,16 +95,19 @@ export default function SalesPage() {
 						<DataTable
 							data={salesQuery.data?.data ?? []}
 							isLoading={salesQuery.isLoading}
+							isError={salesQuery.isError}
+							onRetry={() => salesQuery.refetch()}
 							onPageChange={setPage}
 							page={salesQuery.data?.pagination.page ?? page}
 							totalPages={salesQuery.data?.pagination.totalPages ?? 1}
 							columns={[
-								{ head: "Account", render: (item) => typeof item.account === "string" ? item.account : item.account.name },
+								{ head: "Account", render: (item) => typeof item.account === "string" ? item.account : item.account?.name ?? "Unknown account" },
 								{ head: "Revenue", render: (item) => formatCurrency(item.totalAmount) },
 								{ head: "Profit", render: (item) => formatCurrency(item.totalProfit) },
 								{ head: "Items", render: (item) => formatNumber(item.items.length) },
 								{ head: "Date", render: (item) => formatDate(item.saleDate) },
 							]}
+							cardRenderer={(item) => <Card><CardContent className="space-y-2 p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium">{typeof item.account === "string" ? item.account : item.account?.name ?? "Unknown account"}</p><p className="text-sm text-muted-foreground">{formatDate(item.saleDate)}</p></div><div className="grid grid-cols-3 gap-2 text-sm"><span>Revenue<br /><strong>{formatCurrency(item.totalAmount)}</strong></span><span>Profit<br /><strong>{formatCurrency(item.totalProfit)}</strong></span><span>Items<br /><strong>{formatNumber(item.items?.length)}</strong></span></div></CardContent></Card>}
 						/>
 					</CardContent>
 				</Card>

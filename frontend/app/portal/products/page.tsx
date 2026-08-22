@@ -24,6 +24,7 @@ import type { Product, ProductPayload } from "@/modules/products/products.types"
 import { getCategories } from "@/modules/categories/categories.api"
 import { productFormSchema, type ProductFormValues } from "@/modules/products/schemas/product-form.schema"
 import { stockAdjustmentSchema, type StockAdjustmentValues } from "@/modules/products/schemas/stock-adjustment.schema"
+import { StatusBadge } from "@/components/shared/status-badge"
 
 const initialForm: ProductPayload = {
 	name: "",
@@ -150,12 +151,15 @@ export default function ProductsPage() {
 						<DataTable
 							data={products}
 							isLoading={productsQuery.isLoading}
+							isError={productsQuery.isError}
+							onRetry={() => productsQuery.refetch()}
 							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
 							page={productsQuery.data?.pagination.page ?? page}
 							totalPages={productsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
-								{ head: "SKU", render: (item) => item.sku },
+								{ head: "SKU", render: (item) => item.sku || "-" },
+								{ head: "Status", render: (item) => <StatusBadge value={item.status} /> },
 								{ head: "Stock", render: (item) => `${formatNumber(item.quantity)} ${item.unit}` },
 								{ head: "Value", render: (item) => formatCurrency(item.quantity * item.costPrice) },
 								{ head: "Updated", render: (item) => formatDate(item.updatedAt) },
@@ -167,6 +171,7 @@ export default function ProductsPage() {
 									</div>
 								) },
 							]}
+							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed product"}</p><p className="text-sm text-muted-foreground">{item.sku || "No SKU"}</p></div><StatusBadge value={item.status} /></div><p className="text-sm">{formatNumber(item.quantity)} {item.unit} · {formatCurrency(item.sellingPrice)}</p><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button><Button size="sm" variant="outline" onClick={() => setStockTarget(item)} aria-label={`Adjust stock for ${item.name}`}><SlidersHorizontal className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, name: item.name })} aria-label={`Delete ${item.name}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
 						/>
 					</CardContent>
 				</Card>

@@ -19,12 +19,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { toApiDate } from "@/lib/date"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { contributeToGoal, createFinancialGoal, deleteFinancialGoal, getFinancialGoals, updateFinancialGoal } from "@/modules/financial-goals/financial-goals.api"
 import type { FinancialGoalPayload } from "@/modules/financial-goals/financial-goals.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
 import { financialGoalFormSchema, type FinancialGoalFormValues } from "@/modules/financial-goals/schemas/financial-goal-form.schema"
 import { goalContributionSchema, type GoalContributionValues } from "@/modules/financial-goals/schemas/goal-contribution.schema"
+import { StatusBadge } from "@/components/shared/status-badge"
 
 const initialForm: FinancialGoalPayload = {
 	name: "",
@@ -84,6 +86,9 @@ export default function FinancialGoalsPage() {
 	})
 
 	const goals = goalsQuery.data?.data ?? []
+	const submitGoal = (values: FinancialGoalFormValues) => {
+		saveMutation.mutate({ ...values, deadline: toApiDate(values.deadline) ?? values.deadline })
+	}
 
 	return (
 		<div className="space-y-6">
@@ -100,7 +105,7 @@ export default function FinancialGoalsPage() {
 					</CardHeader>
 					<CardContent>
 						{isAdmin ? (
-							<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
+							<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit(submitGoal)}>
 								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-name">Name</FormLabel><Input id="goal-name" {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
 								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-description">Description</FormLabel><Textarea id="goal-description" {...form.register("description")} /><FormMessage>{form.formState.errors.description?.message}</FormMessage></FormField>
 								<FormField><FormLabel htmlFor="goal-target">Target amount</FormLabel><Input id="goal-target" type="number" step="0.01" {...form.register("targetAmount")} /><FormMessage>{form.formState.errors.targetAmount?.message}</FormMessage></FormField>
@@ -130,31 +135,36 @@ export default function FinancialGoalsPage() {
 						<DataTable
 							data={goals}
 							isLoading={goalsQuery.isLoading}
+							isError={goalsQuery.isError}
+							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed goal"}</p><p className="text-sm text-muted-foreground">{formatCurrency(item.currentAmount)} / {formatCurrency(item.targetAmount)}</p></div><StatusBadge value={item.status} /></div><p className="text-sm text-muted-foreground">Deadline: {formatDate(item.deadline)}</p><div className="flex gap-2"><Button size="sm" variant="outline" aria-label={`Contribute to ${item.name}`} onClick={() => setContributionTarget({ id: item._id, name: item.name })}><PiggyBank className="size-4" /></Button>{isAdmin ? <Button size="sm" variant="outline" aria-label={`Edit ${item.name}`} onClick={() => { setEditingId(item._id); form.reset({ name: item.name, description: item.description ?? "", targetAmount: item.targetAmount, deadline: item.deadline.slice(0, 10), account: typeof item.account === "string" ? item.account : item.account?._id ?? "", status: item.status }) }}><Pencil className="size-4" /></Button> : null}{isAdmin ? <Button size="sm" variant="destructive" aria-label={`Delete ${item.name}`} onClick={() => setDeleteTarget({ id: item._id, name: item.name })}><Trash2 className="size-4" /></Button> : null}</div></CardContent></Card>}
+							onRetry={() => goalsQuery.refetch()}
 							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
 							page={goalsQuery.data?.pagination.page ?? page}
 							totalPages={goalsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Goal", render: (item) => item.name },
 								{ head: "Progress", render: (item) => `${formatCurrency(item.currentAmount)} / ${formatCurrency(item.targetAmount)}` },
-								{ head: "Status", render: (item) => item.status },
+								{ head: "Status", render: (item) => <StatusBadge value={item.status} /> },
 								{ head: "Deadline", render: (item) => formatDate(item.deadline) },
-								{ head: "Actions", render: (item) => (
-									<div className="flex gap-2">
-										<Button size="sm" variant="outline" aria-label={`Contribute to ${item.name}`} onClick={() => setContributionTarget({ id: item._id, name: item.name })}><PiggyBank className="size-4" /></Button>
-										{isAdmin ? <Button size="sm" variant="outline" onClick={() => {
-											setEditingId(item._id)
-											form.reset({
-												name: item.name,
-												description: item.description ?? "",
-												targetAmount: item.targetAmount,
-												deadline: item.deadline.slice(0, 10),
-												account: typeof item.account === "string" ? item.account : item.account._id,
-												status: item.status,
-											})
-										}} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button> : null}
-										{isAdmin ? <Button size="sm" variant="destructive" aria-label={`Delete ${item.name}`} onClick={() => setDeleteTarget({ id: item._id, name: item.name })}><Trash2 className="size-4" /></Button> : null}
-									</div>
-								) },
+								{
+									head: "Actions", render: (item) => (
+										<div className="flex gap-2">
+											<Button size="sm" variant="outline" aria-label={`Contribute to ${item.name}`} onClick={() => setContributionTarget({ id: item._id, name: item.name })}><PiggyBank className="size-4" /></Button>
+											{isAdmin ? <Button size="sm" variant="outline" onClick={() => {
+												setEditingId(item._id)
+												form.reset({
+													name: item.name,
+													description: item.description ?? "",
+													targetAmount: item.targetAmount,
+													deadline: item.deadline.slice(0, 10),
+													account: typeof item.account === "string" ? item.account : item.account?._id ?? "",
+													status: item.status,
+												})
+											}} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button> : null}
+											{isAdmin ? <Button size="sm" variant="destructive" aria-label={`Delete ${item.name}`} onClick={() => setDeleteTarget({ id: item._id, name: item.name })}><Trash2 className="size-4" /></Button> : null}
+										</div>
+									)
+								},
 							]}
 						/>
 					</CardContent>

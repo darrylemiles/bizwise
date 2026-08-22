@@ -17,6 +17,7 @@ import { FormSelect } from "@/components/shared/form-controls"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { createAccount, deleteAccount, getAccounts, updateAccount } from "@/modules/accounts/accounts.api"
+import { StatusBadge } from "@/components/shared/status-badge"
 import type { AccountPayload } from "@/modules/accounts/accounts.types"
 import { accountFormSchema, type AccountFormValues } from "@/modules/accounts/schemas/account-form.schema"
 
@@ -107,12 +108,14 @@ export default function AccountsPage() {
 						<DataTable
 							data={accounts}
 							isLoading={accountsQuery.isLoading}
+							isError={accountsQuery.isError}
+							onRetry={() => accountsQuery.refetch()}
 								onPageChange={handlePageChange}
 							page={accountsQuery.data?.pagination.page ?? page}
 							totalPages={accountsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
-								{ head: "Type", render: (item) => item.type },
+								{ head: "Type", render: (item) => <StatusBadge value={item.type} /> },
 								{ head: "Balance", render: (item) => formatCurrency(item.balance) },
 								{ head: "Updated", render: (item) => formatDate(item.updatedAt) },
 								{ head: "Actions", render: (item) => (
@@ -122,6 +125,7 @@ export default function AccountsPage() {
 									</div>
 								) },
 							]}
+							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed account"}</p><p className="text-sm text-muted-foreground">{formatCurrency(item.balance)}</p></div><StatusBadge value={item.type} /></div><p className="text-sm text-muted-foreground">{item.description || "No description"}</p><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, name: item.name })} aria-label={`Delete ${item.name}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
 						/>
 					</CardContent>
 				</Card>

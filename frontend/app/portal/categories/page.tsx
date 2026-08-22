@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { createCategory, deleteCategory, getCategories, updateCategory } from "@/modules/categories/categories.api"
 import type { CategoryPayload } from "@/modules/categories/categories.types"
 import { categoryFormSchema, type CategoryFormValues } from "@/modules/categories/schemas/category-form.schema"
+import { StatusBadge } from "@/components/shared/status-badge"
 
 const initialForm: CategoryPayload = {
 	name: "",
@@ -100,12 +101,14 @@ export default function CategoriesPage() {
 						<DataTable
 							data={categories}
 							isLoading={categoriesQuery.isLoading}
+							isError={categoriesQuery.isError}
+							onRetry={() => categoriesQuery.refetch()}
 												onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
 							page={categoriesQuery.data?.pagination.page ?? page}
 							totalPages={categoriesQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
-								{ head: "Type", render: (item) => item.type },
+								{ head: "Type", render: (item) => <StatusBadge value={item.type} /> },
 								{ head: "Updated", render: (item) => item.updatedAt ?? "-" },
 								{ head: "Actions", render: (item) => (
 									<div className="flex gap-2">
@@ -114,6 +117,7 @@ export default function CategoriesPage() {
 									</div>
 								) },
 							]}
+							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed category"}</p><p className="text-sm text-muted-foreground">{item.description || "No description"}</p></div><StatusBadge value={item.type} /></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, name: item.name })} aria-label={`Delete ${item.name}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
 						/>
 					</CardContent>
 				</Card>

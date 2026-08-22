@@ -88,6 +88,9 @@ export default function ReportsPage() {
 					<CardContent>
 						<DataTable
 							data={reports?.expenses.categories ?? []}
+							isLoading={reportsQuery.isLoading}
+							isError={reportsQuery.isError}
+							onRetry={() => reportsQuery.refetch()}
 							columns={[
 								{ head: "Category", render: (item) => item.category },
 								{ head: "Total", render: (item) => formatCurrency(item.total) },
@@ -105,8 +108,11 @@ export default function ReportsPage() {
 					<CardContent>
 						<DataTable
 							data={reports?.products.products ?? []}
+							isLoading={reportsQuery.isLoading}
+							isError={reportsQuery.isError}
+							onRetry={() => reportsQuery.refetch()}
 							columns={[
-								{ head: "Product", render: (item) => `${item.product.name} (${item.product.sku})` },
+								{ head: "Product", render: (item) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
 								{ head: "Sold", render: (item) => formatNumber(item.quantitySold) },
 								{ head: "Revenue", render: (item) => formatCurrency(item.revenue) },
 							]}

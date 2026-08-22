@@ -12,6 +12,7 @@ import { DatePickerField } from "@/components/shared/date-picker-field"
 import { DataTable } from "@/components/data-table"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { getDashboard } from "@/modules/dashboard/dashboard.api"
+import { StatusBadge } from "@/components/shared/status-badge"
 
 export default function DashboardPage() {
   const [from, setFrom] = useState("")
@@ -65,9 +66,12 @@ export default function DashboardPage() {
           <CardContent>
             <DataTable
               data={dashboard?.topProducts ?? []}
+                isLoading={dashboardQuery.isLoading}
+                isError={dashboardQuery.isError}
+                onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
               columns={[
-                { head: "Product", render: (item) => `${item.product.name} (${item.product.sku})` },
+                { head: "Product", render: (item) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
                 { head: "Qty", render: (item) => formatNumber(item.quantitySold) },
                 { head: "Revenue", render: (item) => formatCurrency(item.revenue) },
               ]}
@@ -83,6 +87,9 @@ export default function DashboardPage() {
           <CardContent>
             <DataTable
               data={dashboard?.lowStockProducts ?? []}
+                isLoading={dashboardQuery.isLoading}
+                isError={dashboardQuery.isError}
+                onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No low stock items"
               columns={[
                 { head: "Product", render: (item) => `${item.name} (${item.sku})` },
@@ -103,11 +110,14 @@ export default function DashboardPage() {
           <CardContent>
             <DataTable
               data={dashboard?.recentTransactions ?? []}
+                isLoading={dashboardQuery.isLoading}
+                isError={dashboardQuery.isError}
+                onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No transactions yet"
               columns={[
-                { head: "Type", render: (item) => item.type },
+                { head: "Type", render: (item) => <StatusBadge value={item.type} /> },
                 { head: "Amount", render: (item) => formatCurrency(item.amount) },
-                { head: "Account", render: (item) => item.account.name },
+                { head: "Account", render: (item) => item.account?.name ?? "Unknown account" },
                 { head: "Date", render: (item) => formatDate(item.date) },
               ]}
             />
@@ -122,9 +132,12 @@ export default function DashboardPage() {
           <CardContent>
             <DataTable
               data={dashboard?.recentSales ?? []}
+                isLoading={dashboardQuery.isLoading}
+                isError={dashboardQuery.isError}
+                onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
               columns={[
-                { head: "Account", render: (item) => item.account.name },
+                { head: "Account", render: (item) => item.account?.name ?? "Unknown account" },
                 { head: "Amount", render: (item) => formatCurrency(item.totalAmount) },
                 { head: "Profit", render: (item) => formatCurrency(item.totalProfit) },
                 { head: "Date", render: (item) => formatDate(item.saleDate) },
