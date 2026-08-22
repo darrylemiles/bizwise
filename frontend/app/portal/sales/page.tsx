@@ -69,16 +69,62 @@ export default function SalesPage() {
 						<form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
 							<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
 							<FormDatePicker control={form.control} name="saleDate" label="Sale date" />
+							<div className="flex justify-end">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => itemsField.append({ ...initialRow })}>
+									<Plus className="mr-1 size-4" />
+									Add item
+								</Button>
+							</div>
 							<div className="space-y-3">
 								<div className="flex items-center justify-between">
-									<label className="text-sm font-medium">Items</label>
-										<Button type="button" variant="outline" size="sm" onClick={() => itemsField.append({ ...initialRow })}><Plus className="mr-1 size-4" />Add item</Button>
+									<label className="text-lg font-medium">Items</label>
 								</div>
+
 								{itemsField.fields.map((item, index) => (
-									<div key={item.id} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2">
-										<FormField><FormLabel className="sr-only">Product</FormLabel><FormSelect control={form.control} name={`items.${index}.product`} label="" options={productOptions} disabled={productsQuery.isLoading} /></FormField>
-										<FormNumericInput control={form.control} name={`items.${index}.quantity`} id={`sale-quantity-${index}`} label="Quantity" step="1" min="1" />
-										<Button type="button" variant="destructive" size="icon" aria-label="Remove sale item" onClick={() => itemsField.remove(index)}><Trash2 className="size-4" /></Button>
+									<div key={item.id} className="grid grid-cols-12 items-end gap-2">
+										{/* Product */}
+										<div className="col-span-6">
+											<FormLabel className="sr-only">Product</FormLabel>
+											<FormField>
+												<FormSelect
+													control={form.control}
+													name={`items.${index}.product`}
+													label=""
+													options={productOptions}
+													disabled={productsQuery.isLoading}
+												/>
+											</FormField>
+										</div>
+
+										{/* Quantity */}
+										<div className="col-span-4">
+											<FormLabel className="sr-only">Quantity</FormLabel>
+											<FormNumericInput
+												control={form.control}
+												name={`items.${index}.quantity`}
+												id={`sale-quantity-${index}`}
+												label="Quantity"
+												step="1"
+												min="1"
+											/>
+										</div>
+
+										{/* Remove */}
+										<div className="col-span-2 flex justify-center">
+											<Button
+												type="button"
+												variant="destructive"
+												size="icon"
+												aria-label="Remove sale item"
+												onClick={() => itemsField.remove(index)}
+											>
+												<Trash2 className="size-4" />
+											</Button>
+										</div>
 									</div>
 								))}
 							</div>
