@@ -1,6 +1,6 @@
 import getEnv from "./utils/envResolver.js"; 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 const PROJECT_NAME = 'Bizwise';
 const CORS_OPTIONS = {
