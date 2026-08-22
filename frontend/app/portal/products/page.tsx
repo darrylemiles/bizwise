@@ -14,10 +14,11 @@ import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
-import { FormSelect } from "@/components/shared/form-controls"
+import { FormNumericInput, FormSelect } from "@/components/shared/form-controls"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { createProduct, deleteProduct, adjustProductStock, getProducts, updateProduct } from "@/modules/products/products.api"
 import type { Product, ProductPayload } from "@/modules/products/products.types"
@@ -25,6 +26,7 @@ import { getCategories } from "@/modules/categories/categories.api"
 import { productFormSchema, type ProductFormValues } from "@/modules/products/schemas/product-form.schema"
 import { stockAdjustmentSchema, type StockAdjustmentValues } from "@/modules/products/schemas/stock-adjustment.schema"
 import { StatusBadge } from "@/components/shared/status-badge"
+import titleCase from "@/lib/titleCase"
 
 const initialForm: ProductPayload = {
 	name: "",
@@ -42,6 +44,7 @@ export default function ProductsPage() {
 	const queryClient = useQueryClient()
 	const { isAdmin } = useAuth()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [search, setSearch] = useState("")
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [stockTarget, setStockTarget] = useState<Product | null>(null)
@@ -50,7 +53,7 @@ export default function ProductsPage() {
 	const stockForm = useForm<z.input<typeof stockAdjustmentSchema>, unknown, StockAdjustmentValues>({ resolver: zodResolver(stockAdjustmentSchema), defaultValues: { quantity: 1, reason: "Inventory correction" } })
 
 	const categoriesQuery = useQuery({ queryKey: ["categories", "lookup"], queryFn: () => getCategories({ page: 1, limit: 100 }) })
-	const productsQuery = useQuery({ queryKey: ["products", page, search], queryFn: () => getProducts({ page, limit: 10, search: search || undefined }) })
+	const productsQuery = useQuery({ queryKey: ["products", page, pageSize, search], queryFn: () => getProducts({ page, limit: pageSize, search: search || undefined }) })
 
 	const categoryOptions = useMemo(() => (categoriesQuery.data?.data ?? []).map((category) => ({ value: category._id, label: category.name })), [categoriesQuery.data])
 
@@ -62,7 +65,7 @@ export default function ProductsPage() {
 			toast.success(editingId ? "Product updated" : "Product created")
 			await queryClient.invalidateQueries({ queryKey: ["products"] })
 		},
-		onError: () => toast.error("Unable to save product"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to save product")),
 	})
 
 	const removeMutation = useMutation({
@@ -72,7 +75,7 @@ export default function ProductsPage() {
 			toast.success("Product deleted")
 			await queryClient.invalidateQueries({ queryKey: ["products"] })
 		},
-		onError: () => toast.error("Unable to delete product"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete product")),
 	})
 
 	const stockMutation = useMutation({
@@ -83,7 +86,7 @@ export default function ProductsPage() {
 			toast.success("Stock adjusted")
 			await queryClient.invalidateQueries({ queryKey: ["products"] })
 		},
-		onError: () => toast.error("Unable to adjust stock"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to adjust stock")),
 	})
 
 	const products = productsQuery.data?.data ?? []
@@ -125,11 +128,11 @@ export default function ProductsPage() {
 								<FormField className="md:col-span-2"><FormLabel htmlFor="product-name">Name</FormLabel><Input id="product-name" aria-invalid={!!form.formState.errors.name} {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
 								<FormSelect control={form.control} name="category" label="Category" options={categoryOptions} disabled={categoriesQuery.isLoading} />
 								<FormSelect control={form.control} name="unitType" label="Unit type" options={[{ value: "count", label: "Count" }, { value: "weight", label: "Weight" }, { value: "volume", label: "Volume" }]} />
-								<FormSelect control={form.control} name="unit" label="Unit" options={["piece", "box", "pack", "sack", "gram", "kilogram", "milliliter", "liter"].map((value) => ({ value, label: value }))} />
-								<FormField><FormLabel htmlFor="product-cost">Cost price</FormLabel><Input id="product-cost" type="number" step="0.01" {...form.register("costPrice")} /><FormMessage>{form.formState.errors.costPrice?.message}</FormMessage></FormField>
-								<FormField><FormLabel htmlFor="product-selling">Selling price</FormLabel><Input id="product-selling" type="number" step="0.01" {...form.register("sellingPrice")} /><FormMessage>{form.formState.errors.sellingPrice?.message}</FormMessage></FormField>
-								<FormField><FormLabel htmlFor="product-quantity">Quantity</FormLabel><Input id="product-quantity" type="number" {...form.register("quantity")} /><FormMessage>{form.formState.errors.quantity?.message}</FormMessage></FormField>
-								<FormField><FormLabel htmlFor="product-threshold">Low stock threshold</FormLabel><Input id="product-threshold" type="number" {...form.register("lowStockThreshold")} /><FormMessage>{form.formState.errors.lowStockThreshold?.message}</FormMessage></FormField>
+								<FormSelect control={form.control} name="unit" label="Unit" options={["piece", "box", "pack", "sack", "gram", "kilogram", "milliliter", "liter"].map((value) => ({ value, label: titleCase(value) }))} />
+								<FormNumericInput control={form.control} name="costPrice" id="product-cost" label="Cost price" step="0.01" />
+								<FormNumericInput control={form.control} name="sellingPrice" id="product-selling" label="Selling price" step="0.01" />
+								<FormNumericInput control={form.control} name="quantity" id="product-quantity" label="Quantity" step="0.01" />
+								<FormNumericInput control={form.control} name="lowStockThreshold" id="product-threshold" label="Low stock threshold" step="0.01" />
 								<FormSelect control={form.control} name="status" label="Status" options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
 								<div className="flex gap-2 md:col-span-2">
 									<Button type="submit" disabled={saveMutation.isPending}>{editingId ? "Save changes" : "Create product"}</Button>
@@ -152,15 +155,18 @@ export default function ProductsPage() {
 							data={products}
 							isLoading={productsQuery.isLoading}
 							isError={productsQuery.isError}
+							error={productsQuery.error}
 							onRetry={() => productsQuery.refetch()}
 							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={productsQuery.data?.pagination.limit ?? pageSize}
+							total={productsQuery.data?.pagination.total ?? 0}
 							page={productsQuery.data?.pagination.page ?? page}
 							totalPages={productsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
-								{ head: "Name", render: (item) => item.name },
 								{ head: "SKU", render: (item) => item.sku || "-" },
 								{ head: "Status", render: (item) => <StatusBadge value={item.status} /> },
-								{ head: "Stock", render: (item) => `${formatNumber(item.quantity)} ${item.unit}` },
+								{ head: "Stock", render: (item) => `${formatNumber(item.quantity)} ${titleCase(item.unit)}` },
 								{ head: "Value", render: (item) => formatCurrency(item.quantity * item.costPrice) },
 								{ head: "Updated", render: (item) => formatDate(item.updatedAt) },
 								{ head: "Actions", render: (item) => (
@@ -171,12 +177,12 @@ export default function ProductsPage() {
 									</div>
 								) },
 							]}
-							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed product"}</p><p className="text-sm text-muted-foreground">{item.sku || "No SKU"}</p></div><StatusBadge value={item.status} /></div><p className="text-sm">{formatNumber(item.quantity)} {item.unit} · {formatCurrency(item.sellingPrice)}</p><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button><Button size="sm" variant="outline" onClick={() => setStockTarget(item)} aria-label={`Adjust stock for ${item.name}`}><SlidersHorizontal className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, name: item.name })} aria-label={`Delete ${item.name}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
+							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed product"}</p><p className="text-sm text-muted-foreground">{item.sku || "No SKU"}</p></div><StatusBadge value={item.status} /></div><p className="text-sm">{formatNumber(item.quantity)} {titleCase(item.unit)} · {formatCurrency(item.sellingPrice)}</p><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}><Pencil className="size-4" /></Button><Button size="sm" variant="outline" onClick={() => setStockTarget(item)} aria-label={`Adjust stock for ${item.name}`}><SlidersHorizontal className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, name: item.name })} aria-label={`Delete ${item.name}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
 						/>
 					</CardContent>
 				</Card>
 			</div>
-			<Dialog open={!!stockTarget} onOpenChange={(open) => !open && setStockTarget(null)}><DialogContent><DialogHeader><DialogTitle>Adjust stock</DialogTitle><DialogDescription>{stockTarget?.name}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={stockForm.handleSubmit((values) => stockTarget && stockMutation.mutate({ id: stockTarget._id, ...values }))}><FormField><FormLabel htmlFor="stock-quantity">Adjustment amount</FormLabel><Input id="stock-quantity" type="number" {...stockForm.register("quantity")} /><FormMessage>{stockForm.formState.errors.quantity?.message}</FormMessage></FormField><FormField><FormLabel htmlFor="stock-reason">Reason</FormLabel><Textarea id="stock-reason" {...stockForm.register("reason")} /><FormMessage>{stockForm.formState.errors.reason?.message}</FormMessage></FormField><DialogFooter><Button type="submit" disabled={stockMutation.isPending}>Adjust stock</Button></DialogFooter></form></DialogContent></Dialog>
+			<Dialog open={!!stockTarget} onOpenChange={(open) => !open && setStockTarget(null)}><DialogContent><DialogHeader><DialogTitle>Adjust stock</DialogTitle><DialogDescription>{stockTarget?.name}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={stockForm.handleSubmit((values) => stockTarget && stockMutation.mutate({ id: stockTarget._id, ...values }))}><FormNumericInput control={stockForm.control} name="quantity" id="stock-quantity" label="Adjustment amount" step="0.01" allowNegative /><FormField><FormLabel htmlFor="stock-reason">Reason</FormLabel><Textarea id="stock-reason" {...stockForm.register("reason")} /><FormMessage>{stockForm.formState.errors.reason?.message}</FormMessage></FormField><DialogFooter><Button type="submit" disabled={stockMutation.isPending}>Adjust stock</Button></DialogFooter></form></DialogContent></Dialog>
 			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete product?</AlertDialogTitle><AlertDialogDescription>This will permanently delete {deleteTarget?.name}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel render={<Button variant="outline">Cancel</Button>} /><AlertDialogAction render={<Button variant="destructive" disabled={removeMutation.isPending} onClick={() => deleteTarget && removeMutation.mutate(deleteTarget.id)}>Delete product</Button>} /></AlertDialogFooter></AlertDialogContent></AlertDialog>
 		</div>
 	)

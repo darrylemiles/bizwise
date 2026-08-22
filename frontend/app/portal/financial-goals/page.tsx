@@ -14,12 +14,13 @@ import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
-import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
+import { FormDatePicker, FormNumericInput, FormSelect } from "@/components/shared/form-controls"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { toApiDate } from "@/lib/date"
+import { getErrorMessage } from "@/lib/http-error"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { contributeToGoal, createFinancialGoal, deleteFinancialGoal, getFinancialGoals, updateFinancialGoal } from "@/modules/financial-goals/financial-goals.api"
 import type { FinancialGoalPayload } from "@/modules/financial-goals/financial-goals.types"
@@ -41,6 +42,7 @@ export default function FinancialGoalsPage() {
 	const queryClient = useQueryClient()
 	const { isAdmin } = useAuth()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [status, setStatus] = useState("")
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [contributionTarget, setContributionTarget] = useState<{ id: string; name: string } | null>(null)
@@ -49,7 +51,7 @@ export default function FinancialGoalsPage() {
 	const contributionForm = useForm<z.input<typeof goalContributionSchema>, unknown, GoalContributionValues>({ resolver: zodResolver(goalContributionSchema), defaultValues: { amount: 50 } })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
-	const goalsQuery = useQuery({ queryKey: ["financial-goals", page, status], queryFn: () => getFinancialGoals({ page, limit: 10, status: status || undefined }) })
+	const goalsQuery = useQuery({ queryKey: ["financial-goals", page, pageSize, status], queryFn: () => getFinancialGoals({ page, limit: pageSize, status: status || undefined }) })
 
 	const accountOptions = (accountsQuery.data?.data ?? []).map((account) => ({ value: account._id, label: `${account.name} (${account.type})` }))
 
@@ -61,7 +63,7 @@ export default function FinancialGoalsPage() {
 			toast.success(editingId ? "Goal updated" : "Goal created")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
-		onError: () => toast.error("Unable to save goal"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to save goal")),
 	})
 
 	const contributeMutation = useMutation({
@@ -72,7 +74,7 @@ export default function FinancialGoalsPage() {
 			toast.success("Contribution added")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
-		onError: () => toast.error("Unable to add contribution"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to add contribution")),
 	})
 
 	const removeMutation = useMutation({
@@ -82,7 +84,7 @@ export default function FinancialGoalsPage() {
 			toast.success("Goal deleted")
 			await queryClient.invalidateQueries({ queryKey: ["financial-goals"] })
 		},
-		onError: () => toast.error("Unable to delete goal"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete goal")),
 	})
 
 	const goals = goalsQuery.data?.data ?? []
@@ -108,7 +110,7 @@ export default function FinancialGoalsPage() {
 							<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit(submitGoal)}>
 								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-name">Name</FormLabel><Input id="goal-name" {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
 								<FormField className="md:col-span-2"><FormLabel htmlFor="goal-description">Description</FormLabel><Textarea id="goal-description" {...form.register("description")} /><FormMessage>{form.formState.errors.description?.message}</FormMessage></FormField>
-								<FormField><FormLabel htmlFor="goal-target">Target amount</FormLabel><Input id="goal-target" type="number" step="0.01" {...form.register("targetAmount")} /><FormMessage>{form.formState.errors.targetAmount?.message}</FormMessage></FormField>
+								<FormNumericInput control={form.control} name="targetAmount" id="goal-target" label="Target amount" step="0.01" />
 								<FormDatePicker control={form.control} name="deadline" label="Deadline" />
 								<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
 								<div className="flex gap-2 md:col-span-2">
@@ -136,9 +138,13 @@ export default function FinancialGoalsPage() {
 							data={goals}
 							isLoading={goalsQuery.isLoading}
 							isError={goalsQuery.isError}
+							error={goalsQuery.error}
 							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed goal"}</p><p className="text-sm text-muted-foreground">{formatCurrency(item.currentAmount)} / {formatCurrency(item.targetAmount)}</p></div><StatusBadge value={item.status} /></div><p className="text-sm text-muted-foreground">Deadline: {formatDate(item.deadline)}</p><div className="flex gap-2"><Button size="sm" variant="outline" aria-label={`Contribute to ${item.name}`} onClick={() => setContributionTarget({ id: item._id, name: item.name })}><PiggyBank className="size-4" /></Button>{isAdmin ? <Button size="sm" variant="outline" aria-label={`Edit ${item.name}`} onClick={() => { setEditingId(item._id); form.reset({ name: item.name, description: item.description ?? "", targetAmount: item.targetAmount, deadline: item.deadline.slice(0, 10), account: typeof item.account === "string" ? item.account : item.account?._id ?? "", status: item.status }) }}><Pencil className="size-4" /></Button> : null}{isAdmin ? <Button size="sm" variant="destructive" aria-label={`Delete ${item.name}`} onClick={() => setDeleteTarget({ id: item._id, name: item.name })}><Trash2 className="size-4" /></Button> : null}</div></CardContent></Card>}
 							onRetry={() => goalsQuery.refetch()}
 							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={goalsQuery.data?.pagination.limit ?? pageSize}
+							total={goalsQuery.data?.pagination.total ?? 0}
 							page={goalsQuery.data?.pagination.page ?? page}
 							totalPages={goalsQuery.data?.pagination.totalPages ?? 1}
 							columns={[
@@ -170,7 +176,7 @@ export default function FinancialGoalsPage() {
 					</CardContent>
 				</Card>
 			</div>
-			<Dialog open={!!contributionTarget} onOpenChange={(open) => !open && setContributionTarget(null)}><DialogContent><DialogHeader><DialogTitle>Add contribution</DialogTitle><DialogDescription>{contributionTarget?.name}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={contributionForm.handleSubmit((values) => contributionTarget && contributeMutation.mutate({ id: contributionTarget.id, amount: values.amount }))}><FormField><FormLabel htmlFor="contribution-amount">Amount</FormLabel><Input id="contribution-amount" type="number" step="0.01" {...contributionForm.register("amount")} /><FormMessage>{contributionForm.formState.errors.amount?.message}</FormMessage></FormField><DialogFooter><Button type="submit" disabled={contributeMutation.isPending}>Add contribution</Button></DialogFooter></form></DialogContent></Dialog>
+			<Dialog open={!!contributionTarget} onOpenChange={(open) => !open && setContributionTarget(null)}><DialogContent><DialogHeader><DialogTitle>Add contribution</DialogTitle><DialogDescription>{contributionTarget?.name}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={contributionForm.handleSubmit((values) => contributionTarget && contributeMutation.mutate({ id: contributionTarget.id, amount: values.amount }))}><FormNumericInput control={contributionForm.control} name="amount" id="contribution-amount" label="Amount" step="0.01" /><DialogFooter><Button type="submit" disabled={contributeMutation.isPending}>Add contribution</Button></DialogFooter></form></DialogContent></Dialog>
 			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete goal?</AlertDialogTitle><AlertDialogDescription>This will permanently delete {deleteTarget?.name}.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel render={<Button variant="outline">Cancel</Button>} /><AlertDialogAction render={<Button variant="destructive" disabled={removeMutation.isPending} onClick={() => deleteTarget && removeMutation.mutate(deleteTarget.id)}>Delete goal</Button>} /></AlertDialogFooter></AlertDialogContent></AlertDialog>
 		</div>
 	)

@@ -14,16 +14,18 @@ import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
-import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
+import { FormDatePicker, FormNumericInput, FormSelect } from "@/components/shared/form-controls"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 import { createTransaction, deleteTransaction, getTransactions } from "@/modules/transactions/transactions.api"
 import type { TransactionPayload } from "@/modules/transactions/transactions.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
 import { getCategories } from "@/modules/categories/categories.api"
 import { transactionFormSchema, type TransactionFormValues } from "@/modules/transactions/schemas/transaction-form.schema"
 import { StatusBadge } from "@/components/shared/status-badge"
+import titleCase from "@/lib/titleCase"
 
 const initialForm: TransactionPayload = {
 	type: "income",
@@ -39,13 +41,14 @@ const initialForm: TransactionPayload = {
 export default function TransactionsPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [filters, setFilters] = useState({ type: "", account: "", category: "" })
 	const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 	const form = useForm<z.input<typeof transactionFormSchema>, unknown, TransactionFormValues>({ resolver: zodResolver(transactionFormSchema), defaultValues: initialForm })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
 	const categoriesQuery = useQuery({ queryKey: ["categories", "lookup"], queryFn: () => getCategories({ page: 1, limit: 100 }) })
-	const transactionsQuery = useQuery({ queryKey: ["transactions", page, filters], queryFn: () => getTransactions({ page, limit: 10, type: filters.type || undefined, account: filters.account || undefined, category: filters.category || undefined }) })
+	const transactionsQuery = useQuery({ queryKey: ["transactions", page, pageSize, filters], queryFn: () => getTransactions({ page, limit: pageSize, type: filters.type || undefined, account: filters.account || undefined, category: filters.category || undefined }) })
 
 	const accountOptions = useMemo(() => (accountsQuery.data?.data ?? []).map((account) => ({ value: account._id, label: `${account.name} (${account.type})` })), [accountsQuery.data])
 	const categoryOptions = useMemo(() => (categoriesQuery.data?.data ?? []).map((category) => ({ value: category._id, label: category.name })), [categoriesQuery.data])
@@ -57,7 +60,7 @@ export default function TransactionsPage() {
 			toast.success("Transaction created")
 			await queryClient.invalidateQueries({ queryKey: ["transactions"] })
 		},
-		onError: () => toast.error("Unable to create transaction"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to create transaction")),
 	})
 
 	const removeMutation = useMutation({
@@ -67,7 +70,7 @@ export default function TransactionsPage() {
 			toast.success("Transaction deleted")
 			await queryClient.invalidateQueries({ queryKey: ["transactions"] })
 		},
-		onError: () => toast.error("Unable to delete transaction"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete transaction")),
 	})
 
 	const selectedType = useWatch({ control: form.control, name: "type" })
@@ -96,8 +99,8 @@ export default function TransactionsPage() {
 					</CardHeader>
 					<CardContent>
 						<form className="grid gap-4 md:grid-cols-2" onSubmit={form.handleSubmit(handleSubmit)}>
-							<FormSelect control={form.control} name="type" label="Type" options={["income", "expense", "loan", "capital", "transfer"].map((value) => ({ value, label: value }))} />
-							<FormField><FormLabel htmlFor="transaction-amount">Amount</FormLabel><Input id="transaction-amount" type="number" step="0.01" {...form.register("amount")} /><FormMessage>{form.formState.errors.amount?.message}</FormMessage></FormField>
+							<FormSelect control={form.control} name="type" label="Type" options={["income", "expense", "loan", "capital", "transfer"].map((value) => ({ value, label: titleCase(value) }))} />
+							<FormNumericInput control={form.control} name="amount" id="transaction-amount" label="Amount" step="0.01" />
 							<FormDatePicker control={form.control} name="date" label="Date" />
 							<FormSelect control={form.control} name="account" label="Account" options={accountOptions} disabled={accountsQuery.isLoading} />
 							{selectedType === "transfer" ? (
@@ -131,8 +134,12 @@ export default function TransactionsPage() {
 							data={transactionsQuery.data?.data ?? []}
 							isLoading={transactionsQuery.isLoading}
 							isError={transactionsQuery.isError}
+							error={transactionsQuery.error}
 							onRetry={() => transactionsQuery.refetch()}
 							onPageChange={setPage}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={transactionsQuery.data?.pagination.limit ?? pageSize}
+							total={transactionsQuery.data?.pagination.total ?? 0}
 							page={transactionsQuery.data?.pagination.page ?? page}
 							totalPages={transactionsQuery.data?.pagination.totalPages ?? 1}
 							columns={[

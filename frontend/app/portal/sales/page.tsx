@@ -11,11 +11,11 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/data-table"
-import { Input } from "@/components/ui/input"
-import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
-import { FormDatePicker, FormSelect } from "@/components/shared/form-controls"
+import { FormField, FormLabel } from "@/components/ui/form"
+import { FormDatePicker, FormNumericInput, FormSelect } from "@/components/shared/form-controls"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { toApiDate } from "@/lib/date"
+import { getErrorMessage } from "@/lib/http-error"
 import { createSale, getSales } from "@/modules/sales/sales.api"
 import type { SalePayload } from "@/modules/sales/sales.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
@@ -27,12 +27,13 @@ const initialRow = { product: "", quantity: 1 }
 export default function SalesPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const form = useForm<z.input<typeof saleFormSchema>, unknown, SaleFormValues>({ resolver: zodResolver(saleFormSchema), defaultValues: { account: "", saleDate: new Date().toISOString().slice(0, 10), items: [initialRow] } })
 	const itemsField = useFieldArray({ control: form.control, name: "items" })
 
 	const accountsQuery = useQuery({ queryKey: ["accounts", "lookup"], queryFn: () => getAccounts({ page: 1, limit: 100 }) })
 	const productsQuery = useQuery({ queryKey: ["products", "lookup"], queryFn: () => getProducts({ page: 1, limit: 100 }) })
-	const salesQuery = useQuery({ queryKey: ["sales", page], queryFn: () => getSales({ page, limit: 10 }) })
+	const salesQuery = useQuery({ queryKey: ["sales", page, pageSize], queryFn: () => getSales({ page, limit: pageSize }) })
 
 	const accountOptions = useMemo(() => (accountsQuery.data?.data ?? []).map((item) => ({ value: item._id, label: `${item.name} (${item.type})` })), [accountsQuery.data])
 	const productOptions = useMemo(() => (productsQuery.data?.data ?? []).map((item) => ({ value: item._id, label: `${item.name} (${item.sku})` })), [productsQuery.data])
@@ -46,7 +47,7 @@ export default function SalesPage() {
 			await queryClient.invalidateQueries({ queryKey: ["products"] })
 			await queryClient.invalidateQueries({ queryKey: ["accounts"] })
 		},
-		onError: () => toast.error("Unable to create sale"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to create sale")),
 	})
 
 	const handleSubmit = (values: SaleFormValues) => createMutation.mutate({ ...values, saleDate: toApiDate(values.saleDate) })
@@ -76,7 +77,7 @@ export default function SalesPage() {
 								{itemsField.fields.map((item, index) => (
 									<div key={item.id} className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2">
 										<FormField><FormLabel className="sr-only">Product</FormLabel><FormSelect control={form.control} name={`items.${index}.product`} label="" options={productOptions} disabled={productsQuery.isLoading} /></FormField>
-										<FormField><FormLabel className="sr-only">Quantity</FormLabel><Input type="number" min="1" {...form.register(`items.${index}.quantity`)} /><FormMessage>{form.formState.errors.items?.[index]?.quantity?.message}</FormMessage></FormField>
+										<FormNumericInput control={form.control} name={`items.${index}.quantity`} id={`sale-quantity-${index}`} label="Quantity" step="1" min="1" />
 										<Button type="button" variant="destructive" size="icon" aria-label="Remove sale item" onClick={() => itemsField.remove(index)}><Trash2 className="size-4" /></Button>
 									</div>
 								))}
@@ -96,8 +97,12 @@ export default function SalesPage() {
 							data={salesQuery.data?.data ?? []}
 							isLoading={salesQuery.isLoading}
 							isError={salesQuery.isError}
+							error={salesQuery.error}
 							onRetry={() => salesQuery.refetch()}
 							onPageChange={setPage}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={salesQuery.data?.pagination.limit ?? pageSize}
+							total={salesQuery.data?.pagination.total ?? 0}
 							page={salesQuery.data?.pagination.page ?? page}
 							totalPages={salesQuery.data?.pagination.totalPages ?? 1}
 							columns={[

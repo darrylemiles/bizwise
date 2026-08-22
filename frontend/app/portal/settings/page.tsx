@@ -13,6 +13,8 @@ import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { useAuth } from "@/modules/auth/hooks/use-auth"
 import { updateUser } from "@/modules/users/users.api"
 import { settingsFormSchema, type SettingsFormValues } from "@/modules/settings/schemas/settings-form.schema"
+import { getErrorMessage } from "@/lib/http-error"
+import titleCase from "@/lib/titleCase"
 
 export default function SettingsPage() {
 	const queryClient = useQueryClient()
@@ -36,7 +38,7 @@ export default function SettingsPage() {
 			toast.success("Profile updated")
 			await queryClient.invalidateQueries({ queryKey: ["auth", "me"] })
 		},
-		onError: () => toast.error("Unable to update profile"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to update profile")),
 	})
 
 	return (
@@ -58,7 +60,7 @@ export default function SettingsPage() {
 						<FormField><FormLabel htmlFor="settings-password">New password</FormLabel><Input id="settings-password" type="password" aria-invalid={!!form.formState.errors.password} {...form.register("password")} /><FormMessage>{form.formState.errors.password?.message}</FormMessage></FormField>
 						<div className="flex items-center gap-3">
 							<Button type="submit" disabled={saveMutation.isPending}>Save profile</Button>
-							<p className="text-sm text-muted-foreground">Role: {user?.role ?? "user"}</p>
+							<p className="text-sm text-muted-foreground">Role: {titleCase(user?.role ?? "user")}</p>
 						</div>
 					</form>
 				</CardContent>

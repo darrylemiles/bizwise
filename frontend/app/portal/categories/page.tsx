@@ -19,6 +19,8 @@ import { createCategory, deleteCategory, getCategories, updateCategory } from "@
 import type { CategoryPayload } from "@/modules/categories/categories.types"
 import { categoryFormSchema, type CategoryFormValues } from "@/modules/categories/schemas/category-form.schema"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 
 const initialForm: CategoryPayload = {
 	name: "",
@@ -29,13 +31,14 @@ const initialForm: CategoryPayload = {
 export default function CategoriesPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 	const form = useForm<CategoryFormValues>({ resolver: zodResolver(categoryFormSchema), defaultValues: initialForm })
 
 	const categoriesQuery = useQuery({
-		queryKey: ["categories", page],
-		queryFn: () => getCategories({ page, limit: 10 }),
+		queryKey: ["categories", page, pageSize],
+		queryFn: () => getCategories({ page, limit: pageSize }),
 	})
 
 	const saveMutation = useMutation({
@@ -46,7 +49,7 @@ export default function CategoriesPage() {
 			toast.success(editingId ? "Category updated" : "Category created")
 			await queryClient.invalidateQueries({ queryKey: ["categories"] })
 		},
-		onError: () => toast.error("Unable to save category"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to save category")),
 	})
 
 	const removeMutation = useMutation({
@@ -56,7 +59,7 @@ export default function CategoriesPage() {
 			toast.success("Category deleted")
 			await queryClient.invalidateQueries({ queryKey: ["categories"] })
 		},
-		onError: () => toast.error("Unable to delete category"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete category")),
 	})
 
 	const categories = categoriesQuery.data?.data ?? []
@@ -102,14 +105,18 @@ export default function CategoriesPage() {
 							data={categories}
 							isLoading={categoriesQuery.isLoading}
 							isError={categoriesQuery.isError}
+							error={categoriesQuery.error}
 							onRetry={() => categoriesQuery.refetch()}
 												onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={categoriesQuery.data?.pagination.limit ?? pageSize}
+							total={categoriesQuery.data?.pagination.total ?? 0}
 							page={categoriesQuery.data?.pagination.page ?? page}
 							totalPages={categoriesQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
 								{ head: "Type", render: (item) => <StatusBadge value={item.type} /> },
-								{ head: "Updated", render: (item) => item.updatedAt ?? "-" },
+								{ head: "Updated", render: (item) => formatDate(item.updatedAt) },
 								{ head: "Actions", render: (item) => (
 									<div className="flex gap-2">
 										<Button size="sm" variant="outline" aria-label={`Edit ${item.name}`} onClick={() => startEdit(item)}><Pencil className="size-4" /></Button>

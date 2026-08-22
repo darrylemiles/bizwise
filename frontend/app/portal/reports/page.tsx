@@ -9,6 +9,7 @@ import { FormField, FormLabel } from "@/components/ui/form"
 import { DatePickerField } from "@/components/shared/date-picker-field"
 import { DataTable } from "@/components/data-table"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 import { getReports } from "@/modules/reports/reports.api"
 
 export default function ReportsPage() {
@@ -39,7 +40,7 @@ export default function ReportsPage() {
 				</div>
 			</div>
 
-			{reportsQuery.isError ? <p className="text-sm text-destructive">Unable to load reports.</p> : null}
+			{reportsQuery.isError ? <p className="text-sm text-destructive">{getErrorMessage(reportsQuery.error, "Unable to load reports.")}</p> : null}
 
 			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 					<StatCard label="Revenue" value={formatCurrency(reports?.overview.financial.income)} />
@@ -90,6 +91,7 @@ export default function ReportsPage() {
 							data={reports?.expenses.categories ?? []}
 							isLoading={reportsQuery.isLoading}
 							isError={reportsQuery.isError}
+							error={reportsQuery.error}
 							onRetry={() => reportsQuery.refetch()}
 							columns={[
 								{ head: "Category", render: (item) => item.category },
@@ -110,6 +112,7 @@ export default function ReportsPage() {
 							data={reports?.products.products ?? []}
 							isLoading={reportsQuery.isLoading}
 							isError={reportsQuery.isError}
+							error={reportsQuery.error}
 							onRetry={() => reportsQuery.refetch()}
 							columns={[
 								{ head: "Product", render: (item) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },

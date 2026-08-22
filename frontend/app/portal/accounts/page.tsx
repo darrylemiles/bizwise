@@ -16,10 +16,12 @@ import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { FormSelect } from "@/components/shared/form-controls"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 import { createAccount, deleteAccount, getAccounts, updateAccount } from "@/modules/accounts/accounts.api"
 import { StatusBadge } from "@/components/shared/status-badge"
 import type { AccountPayload } from "@/modules/accounts/accounts.types"
 import { accountFormSchema, type AccountFormValues } from "@/modules/accounts/schemas/account-form.schema"
+import titleCase from "@/lib/titleCase"
 
 const initialForm: AccountPayload = {
 	name: "",
@@ -30,13 +32,14 @@ const initialForm: AccountPayload = {
 export default function AccountsPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 	const form = useForm<AccountFormValues>({ resolver: zodResolver(accountFormSchema), defaultValues: initialForm })
 
 	const accountsQuery = useQuery({
-		queryKey: ["accounts", page],
-		queryFn: () => getAccounts({ page, limit: 10 }),
+		queryKey: ["accounts", page, pageSize],
+		queryFn: () => getAccounts({ page, limit: pageSize }),
 	})
 
 	const saveMutation = useMutation({
@@ -47,7 +50,7 @@ export default function AccountsPage() {
 			toast.success(editingId ? "Account updated" : "Account created")
 			await queryClient.invalidateQueries({ queryKey: ["accounts"] })
 		},
-		onError: () => toast.error("Unable to save account"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to save account")),
 	})
 
 	const removeMutation = useMutation({
@@ -57,7 +60,7 @@ export default function AccountsPage() {
 			toast.success("Account deleted")
 			await queryClient.invalidateQueries({ queryKey: ["accounts"] })
 		},
-		onError: () => toast.error("Unable to delete account"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete account")),
 	})
 
 	const handlePageChange = (nextPage: number) => {
@@ -89,7 +92,7 @@ export default function AccountsPage() {
 					<CardContent>
 						<form className="space-y-4" onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}>
 							<FormField><FormLabel htmlFor="account-name">Name</FormLabel><Input id="account-name" aria-invalid={!!form.formState.errors.name} {...form.register("name")} /><FormMessage>{form.formState.errors.name?.message}</FormMessage></FormField>
-							<FormSelect control={form.control} name="type" label="Type" options={[{ value: "cash", label: "Cash" }, { value: "bank", label: "Bank" }, { value: "e-wallet", label: "E-wallet" }]} />
+							<FormSelect control={form.control} name="type" label="Type" options={["cash", "bank", "e-wallet"].map((value) => ({ value, label: titleCase(value) }))} />
 							<FormField><FormLabel htmlFor="account-description">Description</FormLabel><Textarea id="account-description" aria-invalid={!!form.formState.errors.description} {...form.register("description")} /><FormMessage>{form.formState.errors.description?.message}</FormMessage></FormField>
 							<div className="flex gap-2">
 								<Button type="submit" disabled={saveMutation.isPending}>{editingId ? "Save changes" : "Create account"}</Button>
@@ -109,8 +112,12 @@ export default function AccountsPage() {
 							data={accounts}
 							isLoading={accountsQuery.isLoading}
 							isError={accountsQuery.isError}
+							error={accountsQuery.error}
 							onRetry={() => accountsQuery.refetch()}
 								onPageChange={handlePageChange}
+								onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+								pageSize={accountsQuery.data?.pagination.limit ?? pageSize}
+								total={accountsQuery.data?.pagination.total ?? 0}
 							page={accountsQuery.data?.pagination.page ?? page}
 							totalPages={accountsQuery.data?.pagination.totalPages ?? 1}
 							columns={[

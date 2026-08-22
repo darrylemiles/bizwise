@@ -11,6 +11,7 @@ import { FormField, FormLabel } from "@/components/ui/form"
 import { DatePickerField } from "@/components/shared/date-picker-field"
 import { DataTable } from "@/components/data-table"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
+import { getErrorMessage } from "@/lib/http-error"
 import { getDashboard } from "@/modules/dashboard/dashboard.api"
 import { StatusBadge } from "@/components/shared/status-badge"
 
@@ -42,7 +43,7 @@ export default function DashboardPage() {
 
       {dashboardQuery.isError ? (
         <Card>
-          <CardContent className="p-6 text-sm text-destructive">Unable to load dashboard data.</CardContent>
+          <CardContent className="p-6 text-sm text-destructive">{getErrorMessage(dashboardQuery.error, "Unable to load dashboard data.")}</CardContent>
         </Card>
       ) : null}
 
@@ -68,6 +69,7 @@ export default function DashboardPage() {
               data={dashboard?.topProducts ?? []}
                 isLoading={dashboardQuery.isLoading}
                 isError={dashboardQuery.isError}
+                error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
               columns={[
@@ -89,6 +91,7 @@ export default function DashboardPage() {
               data={dashboard?.lowStockProducts ?? []}
                 isLoading={dashboardQuery.isLoading}
                 isError={dashboardQuery.isError}
+                error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No low stock items"
               columns={[
@@ -112,6 +115,7 @@ export default function DashboardPage() {
               data={dashboard?.recentTransactions ?? []}
                 isLoading={dashboardQuery.isLoading}
                 isError={dashboardQuery.isError}
+                error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No transactions yet"
               columns={[
@@ -134,6 +138,7 @@ export default function DashboardPage() {
               data={dashboard?.recentSales ?? []}
                 isLoading={dashboardQuery.isLoading}
                 isError={dashboardQuery.isError}
+                error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
               columns={[

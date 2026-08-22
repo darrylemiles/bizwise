@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { createUser, deleteUser, getUsers, updateUser, updateUserRole } from "@/modules/users/users.api"
 import type { UserPayload } from "@/modules/users/users.types"
 import { userFormSchema, type UserFormValues } from "@/modules/users/schemas/user-form.schema"
+import { getErrorMessage } from "@/lib/http-error"
 import { StatusBadge } from "@/components/shared/status-badge"
 
 const initialForm: UserPayload = {
@@ -30,13 +31,14 @@ const initialForm: UserPayload = {
 export default function UsersPage() {
 	const queryClient = useQueryClient()
 	const [page, setPage] = useState(1)
+	const [pageSize, setPageSize] = useState(10)
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [deleteTarget, setDeleteTarget] = useState<{ id: string; username: string } | null>(null)
 	const form = useForm<UserFormValues>({ resolver: zodResolver(userFormSchema), defaultValues: initialForm })
 
 	const usersQuery = useQuery({
-		queryKey: ["users", page],
-		queryFn: () => getUsers({ page, limit: 10 }),
+		queryKey: ["users", page, pageSize],
+		queryFn: () => getUsers({ page, limit: pageSize }),
 	})
 
 	const saveMutation = useMutation({
@@ -47,7 +49,7 @@ export default function UsersPage() {
 			toast.success(editingId ? "User updated" : "User created")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
-		onError: () => toast.error("Unable to save user"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to save user")),
 	})
 
 	const roleMutation = useMutation({
@@ -56,7 +58,7 @@ export default function UsersPage() {
 			toast.success("Role updated")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
-		onError: () => toast.error("Unable to update role"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to update role")),
 	})
 
 	const removeMutation = useMutation({
@@ -66,7 +68,7 @@ export default function UsersPage() {
 			toast.success("User deleted")
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
-		onError: () => toast.error("Unable to delete user"),
+		onError: (error) => toast.error(getErrorMessage(error, "Unable to delete user")),
 	})
 
 	const users = usersQuery.data?.data ?? []
@@ -113,22 +115,31 @@ export default function UsersPage() {
 							data={users}
 							isLoading={usersQuery.isLoading}
 							isError={usersQuery.isError}
+							error={usersQuery.error}
 							onRetry={() => usersQuery.refetch()}
-							 onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
+							onPageChange={(nextPage) => { setPage(nextPage); setEditingId(null); form.reset(initialForm) }}
+							onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }}
+							pageSize={usersQuery.data?.pagination.limit ?? pageSize}
+							total={usersQuery.data?.pagination.total ?? 0}
 							page={usersQuery.data?.pagination.page ?? page}
 							totalPages={usersQuery.data?.pagination.totalPages ?? 1}
 							columns={[
 								{ head: "Name", render: (item) => item.name },
 								{ head: "Username", render: (item) => item.username },
-								{ head: "Role", render: (item) => (
-									<div className="flex items-center gap-2"><StatusBadge value={item.role} /><Select value={item.role} onValueChange={(role) => roleMutation.mutate({ id: item._id, role: role as UserPayload["role"] })}><SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">User</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>
-								) },
-								{ head: "Actions", render: (item) => (
-									<div className="flex gap-2">
-										<Button size="sm" variant="outline" aria-label={`Edit ${item.username}`} onClick={() => startEdit(item)}><Pencil className="size-4" /></Button>
-										<Button size="sm" variant="destructive" aria-label={`Delete ${item.username}`} onClick={() => setDeleteTarget({ id: item._id, username: item.username })}><Trash2 className="size-4" /></Button>
-									</div>
-								) },
+								{
+									head: "Role", render: (item) => (
+										<div className="flex items-center gap-2"><StatusBadge value={item.role} />
+										</div>
+									)
+								},
+								{
+									head: "Actions", render: (item) => (
+										<div className="flex gap-2">
+											<Button size="sm" variant="outline" aria-label={`Edit ${item.username}`} onClick={() => startEdit(item)}><Pencil className="size-4" /></Button>
+											<Button size="sm" variant="destructive" aria-label={`Delete ${item.username}`} onClick={() => setDeleteTarget({ id: item._id, username: item.username })}><Trash2 className="size-4" /></Button>
+										</div>
+									)
+								},
 							]}
 							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.name || "Unnamed user"}</p><p className="text-sm text-muted-foreground">{item.username || "No username"}</p></div><StatusBadge value={item.role} /></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.username}`}><Pencil className="size-4" /></Button><Button size="sm" variant="destructive" onClick={() => setDeleteTarget({ id: item._id, username: item.username })} aria-label={`Delete ${item.username}`}><Trash2 className="size-4" /></Button></div></CardContent></Card>}
 						/>
