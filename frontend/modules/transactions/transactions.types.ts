@@ -1,22 +1,22 @@
 export type TransactionType = "income" | "expense" | "loan" | "capital" | "transfer"
 
 export interface AccountRef {
-	_id: string
-	name: string
-	type: string
+	_id?: string
+	name?: string
+	type?: string
 	balance?: number
 }
 
 export interface CategoryRef {
-	_id: string
-	name: string
+	_id?: string
+	name?: string
 }
 
 export interface Transaction {
 	_id: string
 	type: TransactionType
 	amount: number
-	account: AccountRef | string
+	account: AccountRef | string | null
 	destinationAccount: AccountRef | string | null
 	category: CategoryRef | string | null
 	description?: string

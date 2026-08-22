@@ -32,11 +32,7 @@ export interface ExpenseReportData {
 export interface ProductReportData {
 	period: ReportPeriod
 	products: Array<{
-		product: {
-			name: string
-			sku: string
-			unit: string
-		}
+		product: { name?: string; sku?: string; unit?: string } | null
 		quantitySold: number
 		revenue: number
 		profit: number

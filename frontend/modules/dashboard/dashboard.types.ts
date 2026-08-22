@@ -35,11 +35,11 @@ export interface DashboardFinancialGoals {
 
 export interface DashboardTopProduct {
 	product: {
-		_id: string
-		name: string
-		sku: string
-		unit: string
-	}
+		_id?: string
+		name?: string
+		sku?: string
+		unit?: string
+	} | null
 	quantitySold: number
 	revenue: number
 	profit: number
@@ -60,10 +60,7 @@ export interface DashboardRecentTransaction {
 	amount: number
 	description?: string
 	date: string
-	account: {
-		name: string
-		type: string
-	}
+	account: { name?: string; type?: string } | null
 }
 
 export interface DashboardRecentSale {
@@ -71,10 +68,7 @@ export interface DashboardRecentSale {
 	totalAmount: number
 	totalProfit: number
 	saleDate: string
-	account: {
-		name: string
-		type: string
-	}
+	account: { name?: string; type?: string } | null
 	items: Array<{
 		product: {
 			name: string

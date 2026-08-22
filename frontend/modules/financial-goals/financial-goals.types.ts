@@ -1,9 +1,9 @@
 export type FinancialGoalStatus = "active" | "completed" | "cancelled"
 
 export interface FinancialGoalAccountRef {
-	_id: string
-	name: string
-	type: string
+	_id?: string
+	name?: string
+	type?: string
 	balance?: number
 }
 
@@ -15,7 +15,7 @@ export interface FinancialGoal {
 	currentAmount: number
 	deadline: string
 	status: FinancialGoalStatus
-	account: FinancialGoalAccountRef | string
+	account: FinancialGoalAccountRef | string | null
 	createdBy?: { name: string; username: string } | string
 }
 

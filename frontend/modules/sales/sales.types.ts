@@ -1,11 +1,12 @@
 export interface SaleProductRef {
-	name: string
-	sku: string
-	unit: string
+	_id?: string
+	name?: string
+	sku?: string
+	unit?: string
 }
 
 export interface SaleItem {
-	product: SaleProductRef | { _id?: string; name: string; sku: string; unit: string } | string
+	product: SaleProductRef | string | null
 	quantity: number
 	unitPrice: number
 	unitCost: number
@@ -14,8 +15,9 @@ export interface SaleItem {
 }
 
 export interface SaleAccountRef {
-	name: string
-	type: string
+	_id?: string
+	name?: string
+	type?: string
 	balance?: number
 }
 
@@ -25,7 +27,7 @@ export interface Sale {
 	totalAmount: number
 	totalCost: number
 	totalProfit: number
-	account: SaleAccountRef | string
+	account: SaleAccountRef | string | null
 	saleDate: string
 	createdBy?: { name: string; username: string } | string
 }
