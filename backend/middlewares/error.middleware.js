@@ -11,6 +11,7 @@ const errorHandler = (err, req, res, next) => {
     response.stack = err.stack;
   }
 
+  console.log(err);
   res.status(statusCode).json(response);
 };
 
