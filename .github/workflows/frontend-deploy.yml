@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "frontend/**"
-      - ".github/workflows/deploy-frontend.yml"
+      - ".github/workflows/frontend-deploy.yml"
 
 jobs:
   deploy:
@@ -34,10 +34,10 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
       - name: Deploy to Vercel
+        working-directory: frontend
         run: |
           npx vercel@latest --prod --yes \
-            --token="${{ secrets.VERCEL_TOKEN }}" \
-            --cwd=frontend
+            --token="${{ secrets.VERCEL_TOKEN }}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
