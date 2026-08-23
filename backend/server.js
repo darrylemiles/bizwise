@@ -10,6 +10,7 @@ import {
   CORS_OPTIONS,
   PORT,
   PROJECT_NAME,
+  NODE_ENV
 } from './constants.js';
 
 import notFoundHandler from './middlewares/notFound.middleware.js';
@@ -67,7 +68,7 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(
-        `${PROJECT_NAME} API is running on port ${PORT}`.green.bold
+        `${PROJECT_NAME} API is running on port ${PORT} in ${NODE_ENV} mode`.green.bold
       );
     });
   } catch (error) {
