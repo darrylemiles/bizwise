@@ -9,6 +9,7 @@ import {
 import titleCase from "@/lib/titleCase"
 
 import { AuthGuard } from "@/modules/auth/components/auth-guard"
+import { QuickActions } from "@/components/dashboard/quick-actions"
 import { usePathname } from "next/navigation"
 
 export default function PortalLayout({
@@ -34,6 +35,7 @@ export default function PortalLayout({
 					<main className="flex flex-1 flex-col gap-4 p-4 pt-0 my-2">
 						{children}
 					</main>
+					<QuickActions />
 				</SidebarInset>
 			</SidebarProvider>
 		</AuthGuard>
