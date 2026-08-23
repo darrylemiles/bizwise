@@ -1,7 +1,6 @@
 import 'dotenv/config';
 
 import express from 'express';
-import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
 import colors from 'colors';
@@ -41,7 +40,6 @@ app.use(helmet());
 app.use(cors(CORS_OPTIONS));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 /* =========================================================
    Health Check

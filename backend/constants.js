@@ -46,7 +46,7 @@ export const CORS_OPTIONS = {
     );
   },
 
-  credentials: true,
+  credentials: false,
 
   methods: [
     'GET',

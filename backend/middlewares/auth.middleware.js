@@ -3,30 +3,42 @@ import User from '../modules/users/user.model.js';
 
 const protect = async (req, res, next) => {
   try {
-    const token = req.cookies.access_token
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-      const error = new Error("Not authenticated")
-      error.statusCode = 401
-      throw error
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const error = new Error('Authentication required');
+      error.statusCode = 401;
+      throw error;
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET,
-    )
+    const token = authHeader.slice('Bearer '.length).trim();
+
+    if (!token) {
+      const error = new Error('Authentication required');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      const error = new Error('Invalid or expired authentication token');
+      error.statusCode = 401;
+      throw error;
+    }
 
     const user = await User.findById(decoded.id)
 
     if (!user) {
-      const error = new Error("User not found")
-      error.statusCode = 401
+      const error = new Error('User not found');
+      error.statusCode = 401;
       throw error
     }
 
     req.user = user
 
-    next()
+    next();
   } catch (error) {
     next(error)
   }

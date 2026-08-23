@@ -1,14 +1,5 @@
 import userService from './user.service.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
-
-const authCookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',
-  path: '/',
-};
-
 const loginUser = async (req, res, next) => {
   try {
     const { username, password } = req.body
@@ -18,16 +9,12 @@ const loginUser = async (req, res, next) => {
       password,
     )
 
-    res.cookie("access_token", result.token, {
-      ...authCookieOptions,
-      maxAge: 24 * 60 * 60 * 1000,
-    })
-
     res.status(200).json({
       success: true,
       message: "Login successful",
       data: {
         user: result.user,
+        accessToken: result.token,
       },
     })
   } catch (error) {
@@ -36,13 +23,6 @@ const loginUser = async (req, res, next) => {
 }
 
 const logoutUser = async (req, res) => {
-  res.clearCookie('access_token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    path: '/',
-  });
-
   res.status(200).json({
     success: true,
     message: 'Logout successful',
