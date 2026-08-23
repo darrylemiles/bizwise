@@ -1,4 +1,4 @@
-name: Deploy Frontend to Vercel
+name: Frontend CI & Deploy
 
 on:
   push:
@@ -9,7 +9,8 @@ on:
       - ".github/workflows/frontend-deploy.yml"
 
 jobs:
-  deploy:
+  frontend-ci:
+    name: Frontend CI
     runs-on: ubuntu-latest
 
     steps:
@@ -27,14 +28,26 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build frontend
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build
         working-directory: frontend
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
+  deploy:
+    name: Deploy Frontend to Vercel
+    needs: frontend-ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Deploy to Vercel
-        working-directory: frontend
         run: |
           npx vercel@latest --prod --yes \
             --token="${{ secrets.VERCEL_TOKEN }}"

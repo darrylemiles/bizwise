@@ -1,4 +1,4 @@
-name: Deploy Bizwise Backend
+name: Backend CI & Deploy
 
 on:
   push:
@@ -8,42 +8,47 @@ on:
       - "backend/**"
       - ".github/workflows/backend-deploy.yml"
 
-  workflow_dispatch:
-
 jobs:
-  deploy:
-    name: Deploy Backend to Heroku
+  backend-ci:
+    name: Backend CI
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
-      - name: Install backend dependencies
+      - name: Install dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Install Heroku CLI
-        run: |
-          curl https://cli-assets.heroku.com/install.sh | sh
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
 
-      - name: Configure Heroku Git remote
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
-        run: |
-          git remote remove heroku 2>/dev/null || true
-          git remote add heroku "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git"
+      - name: Test
+        working-directory: backend
+        run: npm test
 
-      - name: Deploy backend to Heroku
-        run: |
-          git subtree push --prefix backend heroku main
+  deploy:
+    name: Deploy Backend to Heroku
+    needs: backend-ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.14.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          appdir: backend
