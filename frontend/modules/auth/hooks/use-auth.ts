@@ -1,37 +1,39 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useSyncExternalStore } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { getCurrentUser } from "../auth.api"
 import { clearAccessToken, getAccessToken } from "../auth-token"
 
+function subscribeToTokenChanges(callback: () => void) {
+	window.addEventListener("storage", callback)
+	window.addEventListener("bizwise-auth-invalid", callback)
+
+	return () => {
+		window.removeEventListener("storage", callback)
+		window.removeEventListener("bizwise-auth-invalid", callback)
+	}
+}
+
 export function useAuth() {
 	const queryClient = useQueryClient()
-	const [tokenReady, setTokenReady] = useState(false)
-	const [hasToken, setHasToken] = useState(false)
+	const hasToken = useSyncExternalStore(
+		subscribeToTokenChanges,
+		() => !!getAccessToken(),
+		() => false,
+	)
 
 	useEffect(() => {
-		const syncToken = () => {
-			const tokenExists = !!getAccessToken()
-			setHasToken(tokenExists)
-
-			if (!tokenExists) {
-				queryClient.removeQueries({ queryKey: ["auth", "me"] })
-			}
+		if (!hasToken) {
+			queryClient.removeQueries({ queryKey: ["auth", "me"] })
 		}
-
-		syncToken()
-		setTokenReady(true)
-		window.addEventListener("bizwise-auth-invalid", syncToken)
-
-		return () => window.removeEventListener("bizwise-auth-invalid", syncToken)
-	}, [queryClient])
+	}, [hasToken, queryClient])
 
 	const query = useQuery({
 		queryKey: ["auth", "me"],
 		queryFn: getCurrentUser,
-		enabled: tokenReady && hasToken,
+		enabled: hasToken,
 		retry: false,
 		staleTime: 5 * 60 * 1000,
 	})
@@ -39,13 +41,13 @@ export function useAuth() {
 	useEffect(() => {
 		if (query.isError) {
 			clearAccessToken()
-			setHasToken(false)
+			queryClient.removeQueries({ queryKey: ["auth", "me"] })
 		}
-	}, [query.isError])
+	}, [query.isError, queryClient])
 
 	return {
 		user: query.data?.data.user ?? null,
-		isLoading: !tokenReady || query.isLoading,
+		isLoading: !hasToken || query.isLoading,
 		isAuthenticated: !!query.data?.data.user,
 		isError: query.isError,
 		isAdmin: query.data?.data.user?.role === "admin",

@@ -13,9 +13,8 @@ import { DataTable } from "@/components/data-table"
 import { Input } from "@/components/ui/input"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { FormSelect } from "@/components/shared/form-controls"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { createUser, deleteUser, getUsers, updateUser, updateUserRole } from "@/modules/users/users.api"
+import { createUser, deleteUser, getUsers, updateUser } from "@/modules/users/users.api"
 import type { UserPayload } from "@/modules/users/users.types"
 import { userFormSchema, type UserFormValues } from "@/modules/users/schemas/user-form.schema"
 import { getErrorMessage } from "@/lib/http-error"
@@ -50,15 +49,6 @@ export default function UsersPage() {
 			await queryClient.invalidateQueries({ queryKey: ["users"] })
 		},
 		onError: (error) => toast.error(getErrorMessage(error, "Unable to save user")),
-	})
-
-	const roleMutation = useMutation({
-		mutationFn: ({ id, role }: { id: string; role: UserPayload["role"] }) => updateUserRole(id, role),
-		onSuccess: async () => {
-			toast.success("Role updated")
-			await queryClient.invalidateQueries({ queryKey: ["users"] })
-		},
-		onError: (error) => toast.error(getErrorMessage(error, "Unable to update role")),
 	})
 
 	const removeMutation = useMutation({
