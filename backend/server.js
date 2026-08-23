@@ -1,16 +1,19 @@
+import 'dotenv/config';
+
 import express from 'express';
-import cookieParser from "cookie-parser"
-import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
-import connectDB from './config/connectDB.js';
 import colors from 'colors';
+
+import connectDB from './config/connectDB.js';
 
 import {
   CORS_OPTIONS,
+  ALLOWED_ORIGINS,
   PORT,
   PROJECT_NAME,
-  NODE_ENV
+  NODE_ENV,
 } from './constants.js';
 
 import notFoundHandler from './middlewares/notFound.middleware.js';
@@ -26,18 +29,44 @@ import financialGoalRoutes from './modules/financial-goals/financial-goal.route.
 import dashboardRoutes from './modules/dashboard/dashboard.route.js';
 import reportRoutes from './modules/reports/report.route.js';
 
-dotenv.config();
-
 const app = express();
+
+const baseApiPath = '/api/v1';
+
+/* =========================================================
+   Security / Middleware
+========================================================= */
 
 app.use(helmet());
 app.use(cors(CORS_OPTIONS));
 app.use(express.json());
-app.use(cookieParser())
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-const baseApiPath = '/api/v1';
+/* =========================================================
+   Health Check
+========================================================= */
 
-/* ========== Routes ========== */
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    project: PROJECT_NAME,
+    environment: NODE_ENV,
+  });
+});
+
+app.get(`${baseApiPath}/health`, (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    project: PROJECT_NAME,
+    environment: NODE_ENV,
+  });
+});
+
+/* =========================================================
+   Routes
+========================================================= */
+
 app.use(`${baseApiPath}/users`, userRoutes);
 app.use(`${baseApiPath}/categories`, categoryRoutes);
 app.use(`${baseApiPath}/accounts`, accountRoutes);
@@ -48,31 +77,37 @@ app.use(`${baseApiPath}/financial-goals`, financialGoalRoutes);
 app.use(`${baseApiPath}/dashboard`, dashboardRoutes);
 app.use(`${baseApiPath}/reports`, reportRoutes);
 
-
-/* ========== Health Check ========== */
-app.get(`${baseApiPath}/health`, (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    project: PROJECT_NAME,
-  });
-});
+/* =========================================================
+   Error Handling
+========================================================= */
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-/* ========== Start Server ========== */
+/* =========================================================
+   Start Server
+========================================================= */
 
 const startServer = async () => {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(
-        `${PROJECT_NAME} API is running on port ${PORT} in ${NODE_ENV} mode`.green.bold
+        `${PROJECT_NAME} API is running on port ${PORT} in ${NODE_ENV} mode`
+          .green
+          .bold
+      );
+
+      console.log(
+        `Allowed CORS origins: ${ALLOWED_ORIGINS.join(', ')}`.cyan
       );
     });
   } catch (error) {
-    console.error(`Error starting server: ${error.message}`);
+    console.error(
+      `Error starting server: ${error.message}`.red.bold
+    );
+
     process.exit(1);
   }
 };
