@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Trash2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
@@ -10,21 +9,19 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { DataTable } from "@/components/data-table"
+import { TransactionTable } from "@/modules/transactions/components/transaction-table"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField, FormLabel, FormMessage } from "@/components/ui/form"
 import { FormDatePicker, FormNumericInput, FormSelect } from "@/components/shared/form-controls"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { formatCurrency, formatDate } from "@/lib/format"
 import { getErrorMessage } from "@/lib/http-error"
 import { createTransaction, deleteTransaction, getTransactions } from "@/modules/transactions/transactions.api"
 import type { TransactionPayload } from "@/modules/transactions/transactions.types"
 import { getAccounts } from "@/modules/accounts/accounts.api"
 import { getCategories } from "@/modules/categories/categories.api"
 import { transactionFormSchema, type TransactionFormValues } from "@/modules/transactions/schemas/transaction-form.schema"
-import { StatusBadge } from "@/components/shared/status-badge"
 import titleCase from "@/lib/titleCase"
 
 const initialForm: TransactionPayload = {
@@ -130,7 +127,7 @@ export default function TransactionsPage() {
 							<Select value={filters.category} onValueChange={(value) => setFilters((current) => ({ ...current, category: value ?? "" }))}><SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger><SelectContent>{categoryOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
 						</div>
 
-						<DataTable
+						<TransactionTable
 							data={transactionsQuery.data?.data ?? []}
 							isLoading={transactionsQuery.isLoading}
 							isError={transactionsQuery.isError}
@@ -142,17 +139,7 @@ export default function TransactionsPage() {
 							total={transactionsQuery.data?.pagination.total ?? 0}
 							page={transactionsQuery.data?.pagination.page ?? page}
 							totalPages={transactionsQuery.data?.pagination.totalPages ?? 1}
-							columns={[
-								{ head: "Type", render: (item) => <StatusBadge value={item.type} /> },
-								{ head: "Amount", render: (item) => formatCurrency(item.amount) },
-								{ head: "Account", render: (item) => typeof item.account === "string" ? item.account : item.account?.name ?? "Unknown account" },
-								{ head: "Category", render: (item) => item.category ? (typeof item.category === "string" ? item.category : item.category.name) : "-" },
-								{ head: "Date", render: (item) => formatDate(item.date) },
-								{ head: "Actions", render: (item) => (
-									<Button size="sm" variant="destructive" aria-label="Delete transaction" onClick={() => setDeleteTarget(item._id)}><Trash2 className="size-4" /></Button>
-								) },
-							]}
-							cardRenderer={(item) => <Card><CardContent className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div><StatusBadge value={item.type} /><p className="mt-2 text-lg font-semibold">{formatCurrency(item.amount)}</p></div><p className="text-sm text-muted-foreground">{formatDate(item.date)}</p></div><p className="text-sm">{typeof item.account === "string" ? item.account : item.account?.name ?? "Unknown account"}</p><p className="text-sm text-muted-foreground">{item.description || "No description"}</p><Button size="sm" variant="destructive" aria-label="Delete transaction" onClick={() => setDeleteTarget(item._id)}><Trash2 className="mr-1 size-4" />Delete</Button></CardContent></Card>}
+							onDelete={setDeleteTarget}
 						/>
 					</CardContent>
 				</Card>

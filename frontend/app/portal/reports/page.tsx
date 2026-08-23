@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,10 +11,14 @@ import { DataTable } from "@/components/data-table"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { getErrorMessage } from "@/lib/http-error"
 import { getReports } from "@/modules/reports/reports.api"
+import type { ExpenseReportData, ProductReportData } from "@/modules/reports/reports.types"
+import { ReportCharts } from "@/components/reports/report-charts"
 
 export default function ReportsPage() {
 	const [from, setFrom] = useState("")
 	const [to, setTo] = useState("")
+	const [expenseSearch, setExpenseSearch] = useState("")
+	const [sortReports, setSortReports] = useState<"name" | "value">("value")
 
 	const reportsQuery = useQuery({
 		queryKey: ["reports", { from, to }],
@@ -22,6 +26,20 @@ export default function ReportsPage() {
 	})
 
 	const reports = reportsQuery.data
+	const expenseCategories = useMemo(() => [...(reports?.expenses.categories ?? [])]
+		.filter((item) => item.category.toLowerCase().includes(expenseSearch.toLowerCase()))
+		.sort((left, right) => sortReports === "name" ? left.category.localeCompare(right.category) : right.total - left.total), [expenseSearch, reports?.expenses.categories, sortReports])
+	const productRows = useMemo(() => [...(reports?.products.products ?? [])].sort((left, right) => right.revenue - left.revenue), [reports?.products.products])
+	const expenseColumns = useMemo(() => [
+		{ head: "Category", render: (item: ExpenseReportData["categories"][number]) => item.category },
+		{ head: "Total", render: (item: ExpenseReportData["categories"][number]) => formatCurrency(item.total) },
+		{ head: "Count", render: (item: ExpenseReportData["categories"][number]) => formatNumber(item.count) },
+	], [])
+	const productColumns = useMemo(() => [
+		{ head: "Product", render: (item: ProductReportData["products"][number]) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
+		{ head: "Sold", render: (item: ProductReportData["products"][number]) => formatNumber(item.quantitySold) },
+		{ head: "Revenue", render: (item: ProductReportData["products"][number]) => formatCurrency(item.revenue) },
+	], [])
 
 	return (
 		<div className="space-y-6">
@@ -80,6 +98,8 @@ export default function ReportsPage() {
 				</Card>
 			</div>
 
+			<ReportCharts reports={reports} />
+
 			<div className="grid gap-4 xl:grid-cols-2">
 				<Card>
 					<CardHeader>
@@ -87,17 +107,17 @@ export default function ReportsPage() {
 						<CardDescription>Expenses grouped by category</CardDescription>
 					</CardHeader>
 					<CardContent>
+						<div className="mb-4 flex flex-col gap-2 sm:flex-row">
+							<input className="h-9 min-w-0 flex-1 rounded-xl border bg-background px-3 text-sm" placeholder="Filter categories" value={expenseSearch} onChange={(event) => setExpenseSearch(event.target.value)} />
+							<Button type="button" variant="outline" onClick={() => setSortReports((current) => current === "value" ? "name" : "value")}>Sort by {sortReports === "value" ? "name" : "value"}</Button>
+						</div>
 						<DataTable
-							data={reports?.expenses.categories ?? []}
+							data={expenseCategories}
 							isLoading={reportsQuery.isLoading}
 							isError={reportsQuery.isError}
 							error={reportsQuery.error}
 							onRetry={() => reportsQuery.refetch()}
-							columns={[
-								{ head: "Category", render: (item) => item.category },
-								{ head: "Total", render: (item) => formatCurrency(item.total) },
-								{ head: "Count", render: (item) => formatNumber(item.count) },
-							]}
+							columns={expenseColumns}
 						/>
 					</CardContent>
 				</Card>
@@ -109,16 +129,12 @@ export default function ReportsPage() {
 					</CardHeader>
 					<CardContent>
 						<DataTable
-							data={reports?.products.products ?? []}
+							data={productRows}
 							isLoading={reportsQuery.isLoading}
 							isError={reportsQuery.isError}
 							error={reportsQuery.error}
 							onRetry={() => reportsQuery.refetch()}
-							columns={[
-								{ head: "Product", render: (item) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
-								{ head: "Sold", render: (item) => formatNumber(item.quantitySold) },
-								{ head: "Revenue", render: (item) => formatCurrency(item.revenue) },
-							]}
+							columns={productColumns}
 						/>
 					</CardContent>
 				</Card>

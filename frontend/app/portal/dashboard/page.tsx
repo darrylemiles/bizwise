@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import type { ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowDownLeft, ArrowUpRight, Banknote, Boxes, CircleDollarSign, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react"
@@ -14,6 +14,7 @@ import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { getErrorMessage } from "@/lib/http-error"
 import { getDashboard } from "@/modules/dashboard/dashboard.api"
 import { StatusBadge } from "@/components/shared/status-badge"
+import type { DashboardData } from "@/modules/dashboard/dashboard.types"
 
 export default function DashboardPage() {
   const [from, setFrom] = useState("")
@@ -25,6 +26,29 @@ export default function DashboardPage() {
   })
 
   const dashboard = dashboardQuery.data?.data
+
+  const topProductColumns = useMemo(() => [
+    { head: "Product", render: (item: DashboardData["topProducts"][number]) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
+    { head: "Qty", render: (item: DashboardData["topProducts"][number]) => formatNumber(item.quantitySold) },
+    { head: "Revenue", render: (item: DashboardData["topProducts"][number]) => formatCurrency(item.revenue) },
+  ], [])
+  const lowStockColumns = useMemo(() => [
+    { head: "Product", render: (item: DashboardData["lowStockProducts"][number]) => `${item.name} (${item.sku})` },
+    { head: "Remaining", render: (item: DashboardData["lowStockProducts"][number]) => formatNumber(item.quantity) },
+    { head: "Threshold", render: (item: DashboardData["lowStockProducts"][number]) => formatNumber(item.lowStockThreshold) },
+  ], [])
+  const transactionColumns = useMemo(() => [
+    { head: "Type", render: (item: DashboardData["recentTransactions"][number]) => <StatusBadge value={item.type} /> },
+    { head: "Amount", render: (item: DashboardData["recentTransactions"][number]) => formatCurrency(item.amount) },
+    { head: "Account", render: (item: DashboardData["recentTransactions"][number]) => item.account?.name ?? "Unknown account" },
+    { head: "Date", render: (item: DashboardData["recentTransactions"][number]) => formatDate(item.date) },
+  ], [])
+  const saleColumns = useMemo(() => [
+    { head: "Account", render: (item: DashboardData["recentSales"][number]) => item.account?.name ?? "Unknown account" },
+    { head: "Amount", render: (item: DashboardData["recentSales"][number]) => formatCurrency(item.totalAmount) },
+    { head: "Profit", render: (item: DashboardData["recentSales"][number]) => formatCurrency(item.totalProfit) },
+    { head: "Date", render: (item: DashboardData["recentSales"][number]) => formatDate(item.saleDate) },
+  ], [])
 
   return (
     <div className="space-y-6">
@@ -72,11 +96,7 @@ export default function DashboardPage() {
                 error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
-              columns={[
-                { head: "Product", render: (item) => item.product ? `${item.product.name ?? "Unknown product"} (${item.product.sku ?? "No SKU"})` : "Unknown product" },
-                { head: "Qty", render: (item) => formatNumber(item.quantitySold) },
-                { head: "Revenue", render: (item) => formatCurrency(item.revenue) },
-              ]}
+              columns={topProductColumns}
             />
           </CardContent>
         </Card>
@@ -94,11 +114,7 @@ export default function DashboardPage() {
                 error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No low stock items"
-              columns={[
-                { head: "Product", render: (item) => `${item.name} (${item.sku})` },
-                { head: "Remaining", render: (item) => formatNumber(item.quantity) },
-                { head: "Threshold", render: (item) => formatNumber(item.lowStockThreshold) },
-              ]}
+              columns={lowStockColumns}
             />
           </CardContent>
         </Card>
@@ -118,12 +134,7 @@ export default function DashboardPage() {
                 error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No transactions yet"
-              columns={[
-                { head: "Type", render: (item) => <StatusBadge value={item.type} /> },
-                { head: "Amount", render: (item) => formatCurrency(item.amount) },
-                { head: "Account", render: (item) => item.account?.name ?? "Unknown account" },
-                { head: "Date", render: (item) => formatDate(item.date) },
-              ]}
+              columns={transactionColumns}
             />
           </CardContent>
         </Card>
@@ -141,12 +152,7 @@ export default function DashboardPage() {
                 error={dashboardQuery.error}
                 onRetry={() => dashboardQuery.refetch()}
               emptyMessage="No sales yet"
-              columns={[
-                { head: "Account", render: (item) => item.account?.name ?? "Unknown account" },
-                { head: "Amount", render: (item) => formatCurrency(item.totalAmount) },
-                { head: "Profit", render: (item) => formatCurrency(item.totalProfit) },
-                { head: "Date", render: (item) => formatDate(item.saleDate) },
-              ]}
+              columns={saleColumns}
             />
           </CardContent>
         </Card>
