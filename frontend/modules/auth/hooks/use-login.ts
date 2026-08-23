@@ -7,6 +7,7 @@ import {
 
 import { login } from "../auth.api"
 import type { LoginInput } from "../auth.types"
+import { setAccessToken } from "../auth-token"
 
 export function useLogin() {
 	const queryClient = useQueryClient()
@@ -15,6 +16,7 @@ export function useLogin() {
 		mutationFn: (data: LoginInput) => login(data),
 
 		onSuccess: (response) => {
+			setAccessToken(response.data.accessToken)
 			queryClient.setQueryData(
 				["auth", "me"],
 				response,
