@@ -4,6 +4,7 @@ import { useEffect, useState, type ComponentProps } from "react"
 
 import { formatInputNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 
 interface NumericInputProps extends Omit<ComponentProps<"input">, "value" | "onChange" | "onBlur"> {
 	value?: number | string | null
@@ -35,5 +36,11 @@ export function NumericInput({ value, onChange, onBlur, allowNegative = false, .
 		onBlur?.()
 	}
 
-	return <input {...props} className={cn("h-10 w-full min-w-0 rounded-2xl border border-transparent bg-input/50 px-3 py-2 text-base transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30", props.className)} value={displayValue} onChange={(event) => handleChange(event.target.value)} onBlur={handleBlur} />
+	return (
+		<div className="flex min-w-0 gap-1">
+			<input {...props} className={cn("h-10 min-w-0 flex-1 rounded-2xl border border-transparent bg-input/50 px-3 py-2 text-base transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30", props.className)} value={displayValue} onChange={(event) => handleChange(event.target.value)} onBlur={handleBlur} />
+			<Button type="button" variant="outline" size="icon-sm" aria-label="Append two zeros" onClick={() => handleChange(`${displayValue || "0"}00`)}>00</Button>
+			<Button type="button" variant="outline" size="icon-sm" aria-label="Clear number" onClick={() => handleChange("")}>AC</Button>
+		</div>
+	)
 }
